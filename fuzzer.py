@@ -49,11 +49,6 @@ class Fuzzer():
             input=b'testdata.bin'
         )
 
-#        pid = os.fork()
-#        assert(pid >= 0)
-#
-#        if pid == 0: # child
-
 def main():
 
     if len(sys.argv) != 3:
