@@ -1,0 +1,116 @@
+#include <fcntl.h>
+#include <stdarg.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include "utils.h"
+#include "safe.h"
+
+void *
+smmap
+(
+	void *addr,
+	size_t length,
+	int prot,
+	int flags,
+	int fd,
+	off_t offset
+)
+{
+	void *ret = mmap(addr, length, prot, flags, fd, offset);
+	if (ret == MAP_FAILED)
+		panic("Failed: mmap(%p, %llu, %d, %d, %d, %llu)\n",
+			addr, length, prot, flags, fd, offset
+		);
+	return ret;
+}
+
+sighandler_t
+ssignal(int signum, sighandler_t handler)
+{
+	sighandler_t ret = signal(signum, handler);
+	if (ret == SIG_ERR)
+		panic("Failed: signal(%d, %p)\n", signum, handler);
+	return ret;
+}
+
+int
+sopen(const char *pathname, int flags, ...)
+{
+	va_list ap;
+	int ret;
+	mode_t mode = 0;
+
+	if (flags & O_CREAT) {
+		va_start(ap, flags);
+		mode = va_arg(ap, mode_t);
+		va_end(ap);
+	}
+
+	ret = open(pathname, flags, mode);
+	if (ret < 0)
+		panic("Error: open(\"%s\", %d, %o)\n", pathname, flags, mode);
+
+	return ret;
+}
+
+int
+sclose(int fd)
+{
+	int ret = close(fd);
+	if (ret < 0)
+		panic("Error: close(%d)\n", fd);
+	return ret;
+}
+
+int
+sfstat(int fd, struct stat *statbuf)
+{
+	int ret = fstat(fd, statbuf);
+	if (ret < 0)
+		panic("Error: fstat(%d, %p)\n", fd, statbuf);
+	return ret;
+}
+
+ssize_t
+swrite(int fd, const void *buf, size_t count)
+{
+	ssize_t ret = write(fd, buf, count);
+	if (ret < 0)
+		panic("Error: write(%d, %p, %llu)\n", fd, buf, count);
+	return ret;
+}
+
+pid_t
+sfork(void)
+{
+	pid_t ret = fork();
+	if (ret < 0)
+		panic("Error: fork()\n");
+	return ret;
+}
+
+int
+sdup2(int oldfd, int newfd)
+{
+	int ret = dup2(oldfd, newfd);
+	if (ret < 0)
+		panic("Error: dup2(%d, %d)\n", oldfd, newfd);
+	return ret;
+}
+
+pid_t
+swaitpid(pid_t pid, int *wstatus, int options)
+{
+	pid_t ret = waitpid(pid, wstatus, options);
+	if (ret < 0)
+		panic("Error: waitpid(%d, %p, %d)\n", pid, wstatus, options);
+	return ret;
+}
+
+void sexecve(const char *pathname, char *const argv[], char *const envp[])
+{
+	execve(pathname, argv, envp);
+	panic("Error: execve(\"%s\", %p, %p)\n", pathname, argv, envp);
+}

@@ -6,7 +6,11 @@
 # Exit on non-zero return status
 set -e
 
-timeout -v 180 python3 fuzzer.py examples/csv1.txt examples/csv1
+make
+
+timeout -v 180 ./fuzzer examples/csv1.txt examples/csv1
+
+#timeout -v 180 python3 fuzzer.py examples/csv1.txt examples/csv1
 
 
 
