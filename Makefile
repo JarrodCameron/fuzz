@@ -26,5 +26,5 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -rf $(BUILDDIR) $(BINS)
+	rm -rf $(BUILDDIR) $(BINS) testdata.bin
 
