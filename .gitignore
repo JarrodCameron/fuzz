@@ -1,3 +1,4 @@
 testdata.bin
 *.swp
 core
+*.out
