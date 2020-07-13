@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
+#include <math.h>
 
 
 #define TRUE 1
@@ -25,7 +26,7 @@ void deploy() {
 	// lseek(fileDes,0,SEEK_END);
 	char buf[81] = {0};
 	read(fileDes, buf, 80);
-	printf("%s\n", buf);
+	printf("Testdata.bin: %s\n", buf);
 	close(fileDes);
 }
 
@@ -169,22 +170,54 @@ int number_end_offset(char* file_string, int num_start, int file_string_len) {
 
 void write_int_number(int fd, int byte_offset, char* file_contents, int num_length, long number) {
 	int file_len = file_length(fd);
+
 	//replace with -1
 	lseek(fd, byte_offset, SEEK_SET);
 	// printf("Num_length = %d\n", num_length);
 	// printf("File contents[num_length] = %s\n", (file_contents+num_length));
 	int new_number_length = snprintf( NULL, 0, "%ld", number );
+	// printf("New number length = %d\n", new_number_length);
 	char * quick_string = calloc((new_number_length+1),sizeof(char));
 	snprintf( quick_string, new_number_length+1, "%ld", number);
 	// printf("Quick string is: %s\n", quick_string);
 	write(fd, quick_string, new_number_length); //Does not include null terminator
 	// printf("String is: %s\n",&file_contents[num_length]);
 	write(fd, &file_contents[num_length], file_len-byte_offset-num_length);
-	char * zeros = calloc(sizeof(char),file_len- byte_offset);
-	write(fd, zeros, file_len- byte_offset);
-	free(zeros);
-	
+	// printf("Trucating at char num %d\n", file_len+new_number_length - num_length);
+	ftruncate(fd,file_len+new_number_length - num_length);
+
 	deploy();
+
+	lseek(fd, byte_offset, SEEK_SET);
+	write(fd, file_contents, file_len-byte_offset);
+	ftruncate(fd,file_len);
+	free(quick_string);
+
+}
+
+void write_float_number(int fd, int byte_offset, char* file_contents, int num_length, double number) {
+	int file_len = file_length(fd);
+
+	//replace with -1
+	lseek(fd, byte_offset, SEEK_SET);
+	// printf("Num_length = %d\n", num_length);
+	// printf("File contents[num_length] = %s\n", (file_contents+num_length));
+	int new_number_length = snprintf( NULL, 0, "%g", number );
+	// printf("New number length = %d\n", new_number_length);
+	char * quick_string = calloc((new_number_length+1),sizeof(char));
+	snprintf( quick_string, new_number_length+1, "%g", number);
+	// printf("Quick string is: %s\n", quick_string);
+	write(fd, quick_string, new_number_length); //Does not include null terminator
+	// printf("String is: %s\n",&file_contents[num_length]);
+	write(fd, &file_contents[num_length], file_len-byte_offset-num_length);
+	ftruncate(fd,file_len+new_number_length - num_length);
+
+	deploy();
+
+	lseek(fd, byte_offset, SEEK_SET);
+	write(fd, file_contents, file_len-byte_offset);
+	ftruncate(fd,file_len);
+	free(quick_string);
 }
 
 // byte_offset, the offset of the file for which the number it is, it can be a float or integer
@@ -197,6 +230,7 @@ void replace_numbers(int fd, int byte_offset) {
 	char* file_contents = malloc(file_len- byte_offset);
 	read(fd, file_contents, file_len-byte_offset);
 
+	// printf("%c\n",file_contents[0]);
 	double number = 0;
 
 	// printf("The file contents is: %s\n",file_contents);
@@ -205,25 +239,64 @@ void replace_numbers(int fd, int byte_offset) {
 
 	int num_length = number_end_offset(file_contents, 0, file_len-byte_offset);
 
-	// printf("The number length (characters): %d\n", num_length);
+	printf("The number length (characters): %d\n", num_length);
 
-	// printf("%lf\n", number);
+	printf("%lf\n", number);
 
 	write_int_number(fd, byte_offset, file_contents, num_length, 0);
+	write_int_number(fd, byte_offset, file_contents, num_length, 1);
+	write_int_number(fd, byte_offset, file_contents, num_length, -1);
 	write_int_number(fd, byte_offset, file_contents, num_length, -2);
-
-	write_int_number(fd, byte_offset, file_contents, num_length, 100);
+	write_int_number(fd, byte_offset, file_contents, num_length, abs((int)number));
 	
+
+	write_int_number(fd, byte_offset, file_contents, num_length, CHAR_MIN-1);
+	write_int_number(fd, byte_offset, file_contents, num_length, CHAR_MAX+1);
+	write_int_number(fd, byte_offset, file_contents, num_length, UCHAR_MAX+1);
+	write_int_number(fd, byte_offset, file_contents, num_length, 100);
+	write_int_number(fd, byte_offset, file_contents, num_length, INT_MIN);
+	write_int_number(fd, byte_offset, file_contents, num_length, (long)INT_MIN-1);
+	write_int_number(fd, byte_offset, file_contents, num_length, INT_MAX);
+	write_int_number(fd, byte_offset, file_contents, num_length, (long)INT_MAX+1);
+	
+	write_float_number(fd, byte_offset, file_contents, num_length, 0.1);
+	write_float_number(fd, byte_offset, file_contents, num_length, -0.1);
+	write_float_number(fd, byte_offset, file_contents, num_length, (double)1/3);
+	write_float_number(fd, byte_offset, file_contents, num_length, M_PI);
+	
+
 	lseek(fd, byte_offset, SEEK_SET);
 	write(fd, file_contents, file_len-byte_offset);
-	char * zeros = calloc(sizeof(char),file_len- byte_offset);
-	write(fd, zeros, file_len- byte_offset);
-	free(zeros);
+	ftruncate(fd,file_len);
+	free(file_contents);
+
 
 }
 
+//Write a string at offset
+void replace_string(int fd, int byte_offset, int bytes_len, char* replacement_chars, int replacement_char_len) {
+	int file_len = file_length(fd);
+	lseek(fd, byte_offset+bytes_len, SEEK_SET);
+
+	char* file_contents = malloc(file_len- byte_offset+bytes_len);
+	read(fd, file_contents, file_len-byte_offset+bytes_len);
 
 
+
+
+
+
+
+
+	deploy();
+
+	lseek(fd, byte_offset, SEEK_SET);
+	write(fd, file_contents, file_len-byte_offset);
+	ftruncate(fd,file_len);
+	free(file_contents);
+
+
+}
 
 int main (int argc, char *argv[]) {
 	// printf("%s\n",argv[1]);
@@ -231,7 +304,8 @@ int main (int argc, char *argv[]) {
 	// printf("The bit mask is: \n");
 	// printf("%d\n", fileDes);
 	// bit_shift_in_range(fileDes, 0, 1);
-	replace_numbers(fileDes, 18);
+	replace_numbers(fileDes, 14);
+
 
 
 
