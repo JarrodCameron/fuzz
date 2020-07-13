@@ -3,6 +3,7 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <stdio.h>
 
 #include "utils.h"
 #include "safe.h"
@@ -109,8 +110,28 @@ swaitpid(pid_t pid, int *wstatus, int options)
 	return ret;
 }
 
-void sexecve(const char *pathname, char *const argv[], char *const envp[])
+void
+sexecve(const char *pathname, char *const argv[], char *const envp[])
 {
 	execve(pathname, argv, envp);
 	panic("Error: execve(\"%s\", %p, %p)\n", pathname, argv, envp);
 }
+
+off_t
+slseek(int fd, off_t offset, int whence)
+{
+	off_t ret = lseek(fd, offset, whence);
+	if (ret == (off_t) -1)
+		panic("Error: lseek(%d, %llu, %d)\n", fd, offset, whence);
+	return ret;
+}
+
+int
+srename(const char *oldpath, const char *newpath)
+{
+	int ret = rename(oldpath, newpath);
+	if (ret < 0)
+		panic("Error: rename(\"%s\", \"%s\")\n", oldpath, newpath);
+	return ret;
+}
+

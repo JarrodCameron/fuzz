@@ -8,9 +8,7 @@ set -e
 
 make
 
-timeout -v 180 ./fuzzer examples/csv1.txt examples/csv1
-
-#timeout -v 180 python3 fuzzer.py examples/csv1.txt examples/csv1
+timeout -v 180 ./fuzzer examples/dummy.txt examples/dummy
 
 
 

@@ -12,7 +12,8 @@ BINS=fuzzer
 DEPS= \
 	safe.o \
 	utils.o \
-	fuzzer.o
+	fuzzer.o \
+	ftype.o
 
 all: $(BUILDDIR) $(BINS)
 

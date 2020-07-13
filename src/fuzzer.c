@@ -18,19 +18,22 @@
 #include "safe.h"
 #include "utils.h"
 #include "config.h"
+#include "ftype.h"
+#include "fuzzer.h"
 
-struct {
-	const char *input_file;
-	struct stat stat;
+/* Helper Functions */
+static void fuzz_handle_dummy(void);
+static void sig_handler(UNUSED int sig);
+static void init_state(const char *data, const char *bin, char **envp);
+static void deploy(void);
 
-	const char *binary;
-
-	char **envp;
-
-	char *mem;
-
-	uint64_t deploys;
-} state = {0};
+static void (*fuzz_handles[])(void) = {
+	[file_type_csv] = NULL,
+	[file_type_json] = NULL,
+	[file_type_plain] = NULL,
+	[file_type_xml] = NULL,
+	[file_type_dummy] = fuzz_handle_dummy,
+};
 
 static
 void
@@ -67,16 +70,8 @@ init_state(const char *data, const char *bin, char **envp)
 	);
 
 	sclose(fd);
-}
 
-/* Dump the contents of the mmap'd area onto disk */
-static
-void
-dump_mem(void)
-{
-	int fd = sopen(TESTDATA_FILE, O_WRONLY);
-	swrite(fd, state.mem, state.stat.st_size);
-	sclose(fd);
+	state.payload_fd = sopen(TESTDATA_FILE, O_RDWR | O_CREAT, 0644);
 }
 
 static
@@ -87,11 +82,9 @@ deploy(void)
 	int fd, wstatus;
 
 	char *const argv[] = {
-		(char *) state.binary,
+		(char *) "/bin/cat",
 		NULL
 	};
-
-	dump_mem();
 
 	pid_t pid = sfork();
 
@@ -116,10 +109,30 @@ deploy(void)
 
 	default: /* Parent */
 
-		waitpid(pid, &wstatus, 0);
+		swaitpid(pid, &wstatus, 0);
+
+		if (WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV) {
+			printf("We are done here\n");
+			srename(TESTDATA_FILE, BAD_FILE);
+			exit(0);
+		}
+
 		break;
 	}
 
+}
+
+/* This function is a place holder, just an example of an example fuzzer
+ * for a program i made up */
+static
+void
+fuzz_handle_dummy(void)
+{
+	for (int i = 0; i < 256; i++) {
+		slseek(state.payload_fd, 0, SEEK_SET);
+		swrite(state.payload_fd, (void *) &i, sizeof(char));
+		deploy();
+	}
 }
 
 int
@@ -133,8 +146,9 @@ main(int argc, char **argv, char **envp)
 
 	init_state(argv[1], argv[2], envp);
 
-	while(1)
-		deploy();
+	enum file_type ft = detect_file(state.mem, state.input_file);
+
+	fuzz_handles[ft]();
 
 	return 0;
 }

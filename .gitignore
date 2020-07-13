@@ -1,3 +1,8 @@
 testdata.bin
+bad.txt
 *.swp
 core
+build
+cscope.out
+tags
+fuzzer

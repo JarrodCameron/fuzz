@@ -6,5 +6,7 @@
 
 #define TESTDATA_FILE "testdata.bin"
 
+#define BAD_FILE "bad.txt"
+
 #endif /* _CONFIG_H_ */
 
