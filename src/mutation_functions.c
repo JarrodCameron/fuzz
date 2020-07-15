@@ -12,6 +12,8 @@
 #define TRUE 1
 #define FALSE 0
 
+#define NUM_OF_BIT_FLIP_ITERATIONS_CONSTANT 4
+
 //prototype 
 // void bit_flip(int fd, int start_range, int end-range)
 
@@ -23,9 +25,11 @@
 void deploy() {
 	int fileDes = open("testdata.bin", O_RDONLY);
 	// printf("%d\n", fileDes);
-	// lseek(fileDes,0,SEEK_END);
-	char buf[81] = {0};
-	read(fileDes, buf, 80);
+	int len_of_file = lseek(fileDes,0,SEEK_END);
+	lseek(fileDes,0,SEEK_SET);
+	char *buf = malloc(len_of_file);
+
+	read(fileDes, buf, len_of_file);
 	printf("Testdata.bin: %s\n", buf);
 	close(fileDes);
 }
@@ -57,39 +61,93 @@ void bit_shift_in_range(int fd, int start_range, int end_range) {
 }
 
 
-void bit_flip_in_range(int fd, int start_range, int end_range) {
+// void bit_flip_in_range(int fd, int start_range, int end_range) {
 
-	if(start_range > end_range) {
-		deploy();
-		return;
-	}
+// 	if(start_range > end_range) {
+// 		deploy();
+// 		return;
+// 	}
+// 	lseek(fd, start_range, SEEK_SET);
+// 	unsigned char mask = 0;
+// 	char byte = 0;
+// 	read(fd, &byte, 1);
+// 	lseek(fd, start_range, SEEK_SET);
+
+
+// 	int iterations = 0;
+// 	while (iterations < 256) {
+// 		// printf("%d, ", mask);
+// 		char new_byte = (mask^byte);
+// 		// printf("The range is %d - %d\n", start_range, end_range);
+// 		// if(new_byte == 0) {
+// 		// 	printf("new_byte is 0\n");
+// 		// }
+// 		lseek(fd, start_range, SEEK_SET);
+// 		write(fd, &new_byte, 1);
+// 		bit_flip_in_range(fd, start_range+1, end_range);
+// 		mask++;
+// 		iterations++;
+// 	}
+
+// 	lseek(fd, start_range, SEEK_SET);
+// 	write(fd, &byte, 1);
+// 	// deploy()
+
+// }
+
+void bit_flip_in_range(int fd, int start_range, int len) {
 	lseek(fd, start_range, SEEK_SET);
-	unsigned char mask = 0;
-	char byte = 0;
-	read(fd, &byte, 1);
+	unsigned char mask = 255;
+	char *bytes = malloc(len);
+	read(fd, bytes, len);
 	lseek(fd, start_range, SEEK_SET);
 
+	// printf("%c\n",bytes[1]);
 
-	int iterations = 0;
-	while (iterations < 256) {
-		// printf("%d, ", mask);
-		char new_byte = (mask^byte);
-		// printf("The range is %d - %d\n", start_range, end_range);
-		// if(new_byte == 0) {
-		// 	printf("new_byte is 0\n");
-		// }
-		lseek(fd, start_range, SEEK_SET);
+	srand(start_range);
+
+	int i = 0;
+	// while (i < len) {
+
+	// 	char new_byte = (mask^bytes[i]);
+
+	// 	lseek(fd, start_range+i, SEEK_SET);
+	// 	write(fd, &new_byte, 1);
+	// 	deploy();
+
+	// 	lseek(fd, start_range+i, SEEK_SET);
+	// 	write(fd, &bytes[i], 1);
+
+	// 	i++;
+	// }
+
+	i = 0;
+	while (i < NUM_OF_BIT_FLIP_ITERATIONS_CONSTANT*len) {
+
+		mask = rand();
+
+		printf("%d\n", mask);
+
+		int byte_to_flip = rand()%(len);
+
+		char new_byte = (mask^bytes[byte_to_flip]);
+
+		lseek(fd, start_range+byte_to_flip, SEEK_SET);
 		write(fd, &new_byte, 1);
-		bit_flip_in_range(fd, start_range+1, end_range);
-		mask++;
-		iterations++;
+		deploy();
+
+		lseek(fd, start_range+byte_to_flip, SEEK_SET);
+		write(fd, &bytes[i], 1);
+
+		i++;
 	}
 
-	lseek(fd, start_range, SEEK_SET);
-	write(fd, &byte, 1);
-	// deploy()
 
+
+	lseek(fd, start_range, SEEK_SET);
+	write(fd, bytes, len);
 }
+
 
 //This function tries all combinations of bits in a particular byte.
 void bit_flip_in_byte(int fd, int byte_offset) {
@@ -274,29 +332,81 @@ void replace_numbers(int fd, int byte_offset) {
 }
 
 //Write a string at offset
-void replace_string(int fd, int byte_offset, int bytes_len, char* replacement_chars, int replacement_char_len) {
+void write_string(int fd, int byte_offset, int bytes_len, char* replacement_chars, int replacement_chars_len) {
 	int file_len = file_length(fd);
-	lseek(fd, byte_offset+bytes_len, SEEK_SET);
 
-	char* file_contents = malloc(file_len- byte_offset+bytes_len);
-	read(fd, file_contents, file_len-byte_offset+bytes_len);
+	lseek(fd, byte_offset,SEEK_SET);
 
+	//removed_file_contents includes the bytes between byte_offset and byte_offset+bytes_len
+	// we save all these bytes as we wish to rewrite them back to the file to restore it's state
+	char* removed_file_contents = malloc(file_len- byte_offset);
+	read(fd, removed_file_contents, file_len-byte_offset);
 
+	//We only only want to write the bytes after bytes_offset+bytes_len back to the file
+	// as we are replacing the bytes between byte_offset:byte_offset+bytes_len
+	// so we shift the second pointer that much further into the string
+	char * string_to_restore = removed_file_contents+bytes_len;
 
+	lseek(fd, byte_offset, SEEK_SET);
 
+	write(fd, replacement_chars, replacement_chars_len);
 
+	write(fd, string_to_restore, file_len- byte_offset+bytes_len);
 
-
+	ftruncate(fd, file_len - bytes_len + replacement_chars_len);
 
 	deploy();
 
+
+
 	lseek(fd, byte_offset, SEEK_SET);
-	write(fd, file_contents, file_len-byte_offset);
+	write(fd, removed_file_contents, file_len-byte_offset);
 	ftruncate(fd,file_len);
-	free(file_contents);
+	free(removed_file_contents);
 
 
 }
+
+void replace_strings(int fd, int byte_offset, int replace_str_len) {
+
+	//strings to test
+	char format_string[] = "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s";
+	int format_string_len = strlen(format_string);
+	char format_string2[] = "%n%n%n%n%n%n%n%n%n%n%n%n%n%n%n";
+	int format_string2_len = strlen(format_string2);
+	char buffer_overflow[1000];
+	memset(buffer_overflow, 'A', 1000);
+	int buffer_overflow_len = 1000;
+	char newline_break[] = "\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA";
+	int newline_break_len = strlen(newline_break);
+	char null_ptr_break[] = "\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A";
+	int null_ptr_break_len = 96;
+	char new_line_null_ptr[] = "\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n";
+	int new_line_null_ptr_len = 70;
+	char empty_string[] = "";
+	int empty_string_len = 0;
+
+	write_string(fd, byte_offset, replace_str_len, format_string, format_string_len);
+
+	write_string(fd, byte_offset, replace_str_len, format_string2, format_string2_len);	
+
+	write_string(fd, byte_offset, replace_str_len, buffer_overflow, buffer_overflow_len);	
+
+	write_string(fd, byte_offset, replace_str_len, newline_break, newline_break_len);
+
+	write_string(fd, byte_offset, replace_str_len, null_ptr_break, null_ptr_break_len);
+
+	write_string(fd, byte_offset, replace_str_len, new_line_null_ptr, new_line_null_ptr_len);	
+
+	write_string(fd, byte_offset, replace_str_len, empty_string, empty_string_len);
+
+	return;
+
+}
+
+
+
+
 
 int main (int argc, char *argv[]) {
 	// printf("%s\n",argv[1]);
@@ -304,7 +414,9 @@ int main (int argc, char *argv[]) {
 	// printf("The bit mask is: \n");
 	// printf("%d\n", fileDes);
 	// bit_shift_in_range(fileDes, 0, 1);
-	replace_numbers(fileDes, 14);
+	bit_flip_in_range(fileDes, 14, 5);
+	// replace_numbers(fileDes, 14);
+	// replace_strings(fileDes, 14, 21);
 
 
 
