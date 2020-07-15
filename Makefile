@@ -2,7 +2,7 @@
 # Date:   10/07/20 21:12
 
 CC=gcc
-CFLAGS=-Wall -Wextra -ggdb -Werror -I$(INCDIR)
+CFLAGS=-Wall -ggdb -Wextra -I$(INCDIR)
 
 INCDIR=include
 SRCDIR=src
@@ -13,12 +13,14 @@ DEPS= \
 	safe.o \
 	utils.o \
 	fuzzer.o \
+	fuzz_csv.o \
 	ftype.o
 
 all: $(BUILDDIR) $(BINS)
 
 fuzzer: $(addprefix $(BUILDDIR)/, $(DEPS))
-	$(CC) -o fuzzer $(addprefix $(BUILDDIR)/, $(DEPS))
+	make -C libs
+	$(CC) -static -o fuzzer $(addprefix $(BUILDDIR)/, $(DEPS)) -Llibs -lcsv
 
 $(BUILDDIR):
 	mkdir -p $(BUILDDIR)
@@ -28,4 +30,4 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.c
 
 clean:
 	rm -rf $(BUILDDIR) $(BINS) testdata.bin
-
+	make -C libs clean

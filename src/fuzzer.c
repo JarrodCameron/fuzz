@@ -20,6 +20,7 @@
 #include "config.h"
 #include "ftype.h"
 #include "fuzzer.h"
+#include "fuzz_csv.h"
 
 /* Helper Functions */
 static void fuzz_handle_dummy(void);
@@ -28,7 +29,7 @@ static void init_state(const char *data, const char *bin, char **envp);
 static void deploy(void);
 
 static void (*fuzz_handles[])(void) = {
-	[file_type_csv] = NULL,
+	[file_type_csv] = fuzz_handle_csv,
 	[file_type_json] = NULL,
 	[file_type_plain] = NULL,
 	[file_type_xml] = NULL,

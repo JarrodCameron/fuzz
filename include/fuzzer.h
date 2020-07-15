@@ -1,6 +1,10 @@
 #ifndef _FUZZER_H_
 #define _FUZZER_H_
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
 static struct {
 	const char *input_file;
 	struct stat stat;
