@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 
 #include "csv.h"
 #include "fuzz_csv.h"
@@ -9,6 +10,7 @@
 #include "utils.h"
 
 struct value {
+	uint64_t len;
 	char *val;
 };
 
@@ -36,6 +38,15 @@ static struct {
 /* Helper functions */
 static uint64_t arr_len(char **arr);
 static void handle_row(struct row *row, char *text);
+static void fuzz_buffer_overflow(struct state *s);
+static void try_buffer_overflow(uint64_t row, uint64_t val, struct state *s);
+static void fuzz(struct state *s);
+
+/* Here we add functions used for fuzzing.
+ * Each function tests for something different. */
+static void (*fuzz_payloads[])(struct state *) = {
+	fuzz_buffer_overflow,
+};
 
 void
 fuzz_handle_csv(struct state *state)
@@ -53,7 +64,62 @@ fuzz_handle_csv(struct state *state)
 
 	free(rows);
 
-	return;
+	fuzz(state);
+}
+
+/* Does the actual fuzzing */
+static
+void
+fuzz(struct state *s)
+{
+	/* XXX We might want a loop here? */
+	fuzz_payloads[0](s);
+}
+
+static
+void
+fuzz_buffer_overflow(struct state *s)
+{
+	uint64_t row, val;
+	for (row = 0; row < csv.nrows; row++) {
+		for (val = 0; val < csv.rows[row].nvals; val++) {
+			try_buffer_overflow(row, val, s);
+		}
+	}
+}
+
+static
+void
+try_buffer_overflow(uint64_t row, uint64_t val, struct state *s)
+{
+	slseek(s->payload_fd, 0, SEEK_SET);
+
+	off_t len = 0;
+	uint64_t r, v;
+	for (r = 0; r < csv.nrows; r++) {
+		for (v = 0; v < csv.rows[r].nvals; v++) {
+
+			/* Insert the csv value into the payload
+			 * One value will contain a massive string */
+			if (r == row && v == val) {
+				len += swrite(s->payload_fd, BIG, sizeof(BIG)-1);
+			} else {
+				len += swrite(
+					s->payload_fd,
+					csv.rows[r].vals[v].val,
+					csv.rows[r].vals[v].len
+				);
+			}
+
+			if (v == csv.rows[r].nvals - 1)
+				len += swrite(s->payload_fd, "\n", 1);
+			else
+				len += swrite(s->payload_fd, ",", 1);
+		}
+	}
+
+	sftruncate(s->payload_fd, len);
+	deploy();
 }
 
 /* Splits one row of the csv file */
@@ -71,6 +137,7 @@ handle_row(struct row *row, char *text)
 
 	for (uint64_t i = 0; i < row->nvals; i++) {
 		row->vals[i].val = arr[i];
+		row->vals[i].len = strlen(arr[i]);
 	}
 
 	free(arr);

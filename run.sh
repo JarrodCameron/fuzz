@@ -6,6 +6,7 @@
 # Exit on non-zero return status
 set -e
 
+rm -f testdata.bin bad.txt
 make
 
 clear

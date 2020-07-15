@@ -50,5 +50,8 @@ int srename(const char *oldpath, const char *newpath);
 /* malloc() wrapper */
 void *smalloc(size_t size);
 
+/* ftruncate() wrapper */
+int sftruncate(int fd, off_t length);
+
 #endif /* _SAFE_H_ */
 

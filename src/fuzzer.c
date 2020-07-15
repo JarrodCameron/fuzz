@@ -26,7 +26,6 @@
 static void fuzz_handle_dummy(struct state *);
 static void sig_handler(UNUSED int sig);
 static void init_state(const char *data, const char *bin, char **envp);
-static void deploy(void);
 
 static struct state system_state = {0};
 
@@ -42,8 +41,8 @@ static
 void
 sig_handler(UNUSED int sig)
 {
-	printf("cya later\n");
-	printf("%lu\n", system_state.deploys);
+	printf("Exiting: cya later\n");
+	printf("# deploys: %lu\n", system_state.deploys);
 	exit(0);
 }
 
@@ -77,7 +76,6 @@ init_state(const char *data, const char *bin, char **envp)
 	system_state.payload_fd = sopen(TESTDATA_FILE, O_RDWR | O_CREAT, 0644);
 }
 
-static
 void
 deploy(void)
 {
@@ -85,7 +83,7 @@ deploy(void)
 	int fd, wstatus;
 
 	char *const argv[] = {
-		(char *) "/bin/cat",
+		(char *) system_state.binary,
 		NULL
 	};
 
@@ -115,7 +113,7 @@ deploy(void)
 		swaitpid(pid, &wstatus, 0);
 
 		if (WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV) {
-			printf("We are done here\n");
+			printf("$$$ SIGSEGV $$$\n");
 			srename(TESTDATA_FILE, BAD_FILE);
 			exit(0);
 		}

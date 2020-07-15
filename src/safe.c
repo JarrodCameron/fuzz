@@ -145,3 +145,12 @@ smalloc(size_t size)
 		panic("Error: malloc(%llu)\n", size);
 	return ret;
 }
+
+int
+sftruncate(int fd, off_t length)
+{
+	int ret = ftruncate(fd, length);
+	if (ret < 0)
+		panic("Error: ftruncate(%d, %lu)\n", fd, length);
+	return ret;
+}

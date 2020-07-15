@@ -26,5 +26,9 @@ struct state {
 	enum file_type ft;
 };
 
+/* A payload that has been written to the file TESTDATA_FILE will be used as
+ * input to the victim binary. If we find a bug, we do not return. */
+void deploy(void);
+
 #endif /* _FUZZER_H_ */
 
