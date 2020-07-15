@@ -8,7 +8,8 @@ set -e
 
 make
 
-timeout -v 180 ./fuzzer examples/csv1.txt examples/csv1
+clear
 
+timeout -v 180 ./fuzzer examples/csv1.txt examples/csv1
 
 

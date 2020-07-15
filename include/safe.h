@@ -47,5 +47,8 @@ off_t slseek(int fd, off_t offset, int whence);
 /* rename() wrapper */
 int srename(const char *oldpath, const char *newpath);
 
+/* malloc() wrapper */
+void *smalloc(size_t size);
+
 #endif /* _SAFE_H_ */
 

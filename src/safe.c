@@ -1,9 +1,10 @@
 #include <fcntl.h>
 #include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
-#include <stdio.h>
 
 #include "utils.h"
 #include "safe.h"
@@ -135,3 +136,12 @@ srename(const char *oldpath, const char *newpath)
 	return ret;
 }
 
+void *
+smalloc(size_t size)
+{
+	/* Use calloc to zero out the buf */
+	void *ret = calloc(1, size);
+	if (!ret)
+		panic("Error: malloc(%llu)\n", size);
+	return ret;
+}

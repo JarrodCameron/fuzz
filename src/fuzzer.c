@@ -23,12 +23,14 @@
 #include "fuzz_csv.h"
 
 /* Helper Functions */
-static void fuzz_handle_dummy(void);
+static void fuzz_handle_dummy(struct state *);
 static void sig_handler(UNUSED int sig);
 static void init_state(const char *data, const char *bin, char **envp);
 static void deploy(void);
 
-static void (*fuzz_handles[])(void) = {
+static struct state system_state = {0};
+
+static void (*fuzz_handles[])(struct state *) = {
 	[file_type_csv] = fuzz_handle_csv,
 	[file_type_json] = NULL,
 	[file_type_plain] = NULL,
@@ -41,7 +43,7 @@ void
 sig_handler(UNUSED int sig)
 {
 	printf("cya later\n");
-	printf("%lu\n", state.deploys);
+	printf("%lu\n", system_state.deploys);
 	exit(0);
 }
 
@@ -49,21 +51,21 @@ static
 void
 init_state(const char *data, const char *bin, char **envp)
 {
-	state.input_file = data;
-	state.binary = bin;
-	state.envp = envp;
+	system_state.input_file = data;
+	system_state.binary = bin;
+	system_state.envp = envp;
 
 	/* For graceful exit and some stats */
 	ssignal(SIGINT, &sig_handler); /* Control-c */
 	ssignal(SIGTERM, &sig_handler); /* timeout -v */
 
-	int fd = sopen(state.input_file, O_RDONLY);
+	int fd = sopen(system_state.input_file, O_RDONLY);
 
-	sfstat(fd, &state.stat);
+	sfstat(fd, &system_state.stat);
 
-	state.mem = smmap(
+	system_state.mem = smmap(
 		NULL,
-		state.stat.st_size,
+		system_state.stat.st_size,
 		PROT_READ | PROT_WRITE,
 		MAP_PRIVATE,
 		fd,
@@ -72,14 +74,14 @@ init_state(const char *data, const char *bin, char **envp)
 
 	sclose(fd);
 
-	state.payload_fd = sopen(TESTDATA_FILE, O_RDWR | O_CREAT, 0644);
+	system_state.payload_fd = sopen(TESTDATA_FILE, O_RDWR | O_CREAT, 0644);
 }
 
 static
 void
 deploy(void)
 {
-	state.deploys += 1;
+	system_state.deploys += 1;
 	int fd, wstatus;
 
 	char *const argv[] = {
@@ -101,9 +103,9 @@ deploy(void)
 		sclose(fd);
 
 		sexecve(
-			state.binary,
+			system_state.binary,
 			argv,
-			state.envp
+			system_state.envp
 		);
 
 		break;
@@ -127,11 +129,11 @@ deploy(void)
  * for a program i made up */
 static
 void
-fuzz_handle_dummy(void)
+fuzz_handle_dummy(UNUSED struct state *s)
 {
 	for (int i = 0; i < 256; i++) {
-		slseek(state.payload_fd, 0, SEEK_SET);
-		swrite(state.payload_fd, (void *) &i, sizeof(char));
+		slseek(system_state.payload_fd, 0, SEEK_SET);
+		swrite(system_state.payload_fd, (void *) &i, sizeof(char));
 		deploy();
 	}
 }
@@ -147,9 +149,9 @@ main(int argc, char **argv, char **envp)
 
 	init_state(argv[1], argv[2], envp);
 
-	enum file_type ft = detect_file(state.mem, state.input_file);
+	system_state.ft = detect_file(system_state.mem, system_state.input_file);
 
-	fuzz_handles[ft]();
+	fuzz_handles[system_state.ft](&system_state);
 
 	return 0;
 }

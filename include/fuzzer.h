@@ -5,7 +5,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-static struct {
+#include "ftype.h"
+
+struct state {
 	const char *input_file;
 	struct stat stat;
 
@@ -20,7 +22,9 @@ static struct {
 	/* The fd for the payload file.
 	 * This saves use from opening/closing the file all the time. */
 	int payload_fd;
-} state = {0};
+
+	enum file_type ft;
+};
 
 #endif /* _FUZZER_H_ */
 

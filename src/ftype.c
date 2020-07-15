@@ -9,5 +9,5 @@ detect_file(const char *mem, const char *file)
 	(void) mem;
 	(void) file;
 
-	return file_type_dummy;
+	return file_type_csv;
 }
