@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "ftype.h"
 
 enum file_type
@@ -14,7 +15,7 @@ detect_file(const char *file)
 
     FILE *fd = fopen(file, "r");
     if (fd == NULL) {
-        printf("Could not open file %s", filename);
+        printf("Could not open file %s", file);
         return 0;
     }
 
@@ -43,26 +44,27 @@ detect_file(const char *file)
                 break;
         }   
     }
-    line++; // for the final line
-    printf("%d comma, %d {, %d }, %d <, %d >, %d lines\n", comma, curly_l, curly_r, angle_l, angle_r, line);
+
+    // printf("%d comma, %d {, %d }, %d <, %d >, %d lines\n", comma, curly_l, curly_r, angle_l, angle_r, line);
 
     if ((curly_l != 0) && (curly_l == curly_r) ) {
-        printf("JSON file found\n");
+        // printf("JSON file found\n");
         return file_type_json;
     } else if ((angle_l != 0) && (angle_l == angle_r) ) {
-        printf("XML file found\n");
+        // printf("XML file found\n");
         return file_type_xml;
     } else if (comma == 0) {
-        printf("plaintext file found\n");
+        // printf("plaintext file found\n");
         return file_type_plain;
     } else if (comma % line == 0) {
-        printf("CSV file found\n");
+        // printf("CSV file found\n");
         return file_type_csv;
     } else {
-        printf("plaintext file found\n");
+        // printf("plaintext file found\n");
         return file_type_plain;
     } 
 
     fclose(fd);
+	// shouldn't ever get here
     return file_type_dummy;
 }

@@ -146,7 +146,7 @@ main(int argc, char **argv, char **envp)
 
 	init_state(argv[1], argv[2], envp);
 
-	enum file_type ft = detect_file(state.mem, state.input_file);
+	enum file_type ft = detect_file(state.input_file);
 
 	fuzz_handles[ft]();
 
