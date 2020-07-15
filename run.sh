@@ -11,6 +11,6 @@ make
 
 clear
 
-timeout -v 180 ./fuzzer examples/csv1.txt examples/csv1
+timeout -v 180 ./fuzzer examples/json1.txt examples/json1
 
 

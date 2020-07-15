@@ -11,6 +11,7 @@ Fuzzer for comp6447
 # Shared libs
 
 - [csv\_parser](https://github.com/semitrivial/csv_parser)
+- [json\_parser](https://github.com/udp/json-parser)
 
 # Notes from chat
 

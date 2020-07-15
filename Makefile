@@ -14,13 +14,14 @@ DEPS= \
 	utils.o \
 	fuzzer.o \
 	fuzz_csv.o \
+	fuzz_json.o \
 	ftype.o
 
 all: $(BUILDDIR) $(BINS)
 
 fuzzer: $(addprefix $(BUILDDIR)/, $(DEPS))
 	make -C libs
-	$(CC) -static -o fuzzer $(addprefix $(BUILDDIR)/, $(DEPS)) -Llibs -lcsv
+	$(CC) -static -o fuzzer $(addprefix $(BUILDDIR)/, $(DEPS)) -Llibs -lcsv -ljsonparser -lm
 
 $(BUILDDIR):
 	mkdir -p $(BUILDDIR)
@@ -29,5 +30,5 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -rf $(BUILDDIR) $(BINS) testdata.bin
 	make -C libs clean
+	rm -rf $(BUILDDIR) $(BINS) testdata.bin

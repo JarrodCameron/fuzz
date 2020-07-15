@@ -19,6 +19,7 @@
             "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 
 #define UNUSED __attribute__((unused))
+#define BP() __asm__("int3")
 
 /* When shit hits the fan, print this string and abort() */
 void panic(const char *fmt, ...);
