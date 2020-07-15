@@ -73,7 +73,7 @@ int find_format(char *filename) {
 
 int main() {
     int file = find_format("csv1.txt");
-    printf(file\n);
+    printf("%d\n",file);
 
     return 0;
 }
