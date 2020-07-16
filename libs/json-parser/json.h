@@ -67,14 +67,14 @@ typedef struct
 
 typedef enum
 {
-   json_none = 0,
-   json_object = 1,
-   json_array = 2,
-   json_integer = 3,
-   json_double = 4,
-   json_string = 5,
-   json_boolean = 6,
-   json_null = 7
+   json_none,
+   json_object,
+   json_array,
+   json_integer,
+   json_double,
+   json_string,
+   json_boolean,
+   json_null,
 
 } json_type;
 
@@ -163,5 +163,3 @@ void json_value_free_ex (json_settings * settings,
 
 
 #endif
-
-
