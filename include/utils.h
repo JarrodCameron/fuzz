@@ -19,10 +19,11 @@
             "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
 
 #define UNUSED __attribute__((unused))
+#define NORETURN __attribute__((noreturn))
 #define BP() __asm__("int3")
 
 /* When shit hits the fan, print this string and abort() */
-void panic(const char *fmt, ...);
+NORETURN void panic(const char *fmt, ...);
 
 #endif /* _UTILS_H_ */
 

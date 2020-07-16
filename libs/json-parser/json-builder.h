@@ -36,11 +36,6 @@
  */
 #include "json.h"
 
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
 /* IMPORTANT NOTE:  If you want to use json-builder functions with values
  * allocated by json-parser as part of the parsing process, you must pass
  * json_builder_extra as the value_extra setting in json_settings when
@@ -148,11 +143,4 @@ void json_serialize_ex (json_char * buf, json_value *, json_serialize_opts);
  ***/
 void json_builder_free (json_value *);
 
-#ifdef __cplusplus
-}
 #endif
-
-#endif
-
-
-

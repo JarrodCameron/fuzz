@@ -20,6 +20,18 @@ static struct {
 
 } json = {0};
 
+/* Helper functions */
+static void fuzz(struct state *s);
+static void fuzz_buffer_overflow(struct state *s);
+static const char *debug_get_type(json_type jt);
+static void json_dump(struct state *s);
+
+/* Here we add functions used for fuzzing.
+ * Each function tests for something different. */
+static void (*fuzz_payloads[])(struct state *) = {
+	fuzz_buffer_overflow,
+};
+
 void
 fuzz_handle_json(struct state *state)
 {
@@ -35,5 +47,81 @@ fuzz_handle_json(struct state *state)
 	json.mem = smalloc(json.memlen);
 
 	json_serialize(json.mem, json.jv);
-	printf("%s\n", json.mem);
+
+	fuzz(state);
 }
+
+/* Does the actual fuzzing */
+static
+void
+fuzz(struct state *s)
+{
+	/* XXX We might want a loop here? */
+	fuzz_payloads[0](s);
+}
+
+/* TODO Patch this so it traverses the json file recursevly,
+ * so far we are just buffer overlowing the keys*/
+static
+void
+fuzz_buffer_overflow(struct state *s)
+{
+	unsigned int i;
+
+	if (json.jv->type != json_object)
+		panic(
+			"This function does not now how to handle this type: %s\n",
+			json.jv->type
+		);
+
+	/* We change the value of each key to BIG then restore it */
+	for (i = 0; i < json.jv->u.object.length; i++) {
+
+		json_object_entry *entry = &(json.jv->u.object.values[i]);
+
+		json_char *old_name = entry->name;
+		unsigned int old_len = entry->name_length;
+
+		entry->name = BIG;
+		entry->name_length = sizeof(BIG)-1;
+
+		json_dump(s);
+		deploy();
+
+		entry->name = old_name;
+		entry->name_length = old_len;
+	}
+}
+
+/* Dump the json_value into the payload_fd file */
+static
+void
+json_dump(struct state *s)
+{
+	size_t len = json_measure(json.jv);
+	if (len > json.memlen)
+		panic("The json object is larger than the size of memory");
+	json_serialize(json.mem, json.jv);
+	slseek(s->payload_fd, 0, SEEK_SET);
+	swrite(s->payload_fd, json.mem, len);
+	sftruncate(s->payload_fd, len);
+}
+
+UNUSED
+static
+const char *
+debug_get_type(json_type jt)
+{
+	switch(jt) {
+	case json_none: return "json_none";
+	case json_object: return "json_object";
+	case json_array: return "json_array";
+	case json_integer: return "json_integer";
+	case json_double: return "json_double";
+	case json_string: return "json_string";
+	case json_boolean: return "json_boolean";
+	case json_null: return "json_null";
+	default: panic("Unkown json_type: %d\n", jt);
+	}
+}
+
