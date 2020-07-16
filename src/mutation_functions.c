@@ -1,3 +1,12 @@
+/*******************************************
+ *                                         *
+ *    Author: Brendan Nyholm (z5206679)    *
+ *    Date:   16/07/20 12:30               *
+ *                                         *
+ *******************************************/
+
+
+
 #include<stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -9,91 +18,76 @@
 #include <math.h>
 
 
-#define TRUE 1
-#define FALSE 0
-
-#define NUM_OF_BIT_FLIP_ITERATIONS_CONSTANT 4
-
-//prototype 
-// void bit_flip(int fd, int start_range, int end-range)
+#include "config.h"
+#include "mutation_functions.h"
+#include "fuzzer.h"
 
 
-//Issues
-//Currently leaves 0s at the end of the file if the length of the file has been reduced with replace numbers
-//Need a different strategy for bit flipping at 255^num bits is 60 seconds for flipping 3 bytes, duplicates also appear
+// void deploy() {
+// 	int fileDes = open(TESTDATA_FILE, O_RDONLY);
+// 	// printf("%d\n", fileDes);
+// 	int len_of_file = lseek(fileDes,0,SEEK_END);
+// 	lseek(fileDes,0,SEEK_SET);
+// 	char *buf = malloc(len_of_file);
 
-void deploy() {
-	int fileDes = open("testdata.bin", O_RDONLY);
-	// printf("%d\n", fileDes);
-	int len_of_file = lseek(fileDes,0,SEEK_END);
-	lseek(fileDes,0,SEEK_SET);
-	char *buf = malloc(len_of_file);
+// 	read(fileDes, buf, len_of_file);
+// 	printf("Testdata.bin: %s\n", buf);
+// 	close(fileDes);
+// }
 
-	read(fileDes, buf, len_of_file);
-	printf("Testdata.bin: %s\n", buf);
-	close(fileDes);
-}
+void bit_shift_in_range(int fd, int start_range, int len) {
 
-void bit_shift_in_range(int fd, int start_range, int end_range) {
-	if (start_range > end_range) {
-		deploy();
-		return;
-	}
 	lseek(fd, start_range, SEEK_SET);
 	int shift = 0;
-	char byte = 0;
-	read(fd, &byte, 1);
+	char *bytes = malloc(sizeof(char)*len);
+	read(fd, bytes, len);
 	lseek(fd, start_range, SEEK_SET);
+	int i = 0;
+	srand(start_range);
 
-	while (shift < 8) {
-		char new_byte = (byte << shift);
-		if (new_byte == 0) {
-			return;
-		}
-		lseek(fd, start_range, SEEK_SET);
+	while (i < len) {
+		shift = (rand()%7) + 1; //Don't want shift it by 0 bits 
+		char new_byte = (bytes[i] << shift);
+
+		lseek(fd, start_range+i, SEEK_SET);
 		write(fd, &new_byte, 1);
-		bit_shift_in_range(fd, start_range+1, end_range);
-		shift++;
+		deploy();
+
+		lseek(fd, start_range+i, SEEK_SET);
+		write(fd, &bytes[i], 1);
+
+		i++;
+
 	}
+
+	i = 0;
+	while(i < len*NUM_OF_BIT_SHIFT_ITERATIONS_CONSTANT) {
+		int byte_to_shift = rand()%len;
+
+		shift = (rand()%7) + 1; //Don't want shift it by 0 bits 
+		char new_byte = (bytes[byte_to_shift] << shift);
+
+		lseek(fd, start_range+byte_to_shift, SEEK_SET);
+		write(fd, &new_byte, 1);
+
+		deploy();
+
+		lseek(fd, start_range+byte_to_shift, SEEK_SET);
+		write(fd, &bytes[byte_to_shift], 1);
+
+
+		i++;
+
+	}
+
 	lseek(fd, start_range, SEEK_SET);
-	write(fd, &byte, 1);
+	write(fd, bytes, len);
 
 }
 
 
-// void bit_flip_in_range(int fd, int start_range, int end_range) {
-
-// 	if(start_range > end_range) {
-// 		deploy();
-// 		return;
-// 	}
-// 	lseek(fd, start_range, SEEK_SET);
-// 	unsigned char mask = 0;
-// 	char byte = 0;
-// 	read(fd, &byte, 1);
-// 	lseek(fd, start_range, SEEK_SET);
 
 
-// 	int iterations = 0;
-// 	while (iterations < 256) {
-// 		// printf("%d, ", mask);
-// 		char new_byte = (mask^byte);
-// 		// printf("The range is %d - %d\n", start_range, end_range);
-// 		// if(new_byte == 0) {
-// 		// 	printf("new_byte is 0\n");
-// 		// }
-// 		lseek(fd, start_range, SEEK_SET);
-// 		write(fd, &new_byte, 1);
-// 		bit_flip_in_range(fd, start_range+1, end_range);
-// 		mask++;
-// 		iterations++;
-// 	}
-
-// 	lseek(fd, start_range, SEEK_SET);
-// 	write(fd, &byte, 1);
-// 	// deploy()
-
-// }
 
 void bit_flip_in_range(int fd, int start_range, int len) {
 	lseek(fd, start_range, SEEK_SET);
@@ -107,17 +101,24 @@ void bit_flip_in_range(int fd, int start_range, int len) {
 	srand(start_range);
 
 	int i = 0;
-	// while (i < len) {
+	while (i < len) {
 
-	// 	char new_byte = (mask^bytes[i]);
+		char new_byte = (mask^bytes[i]);
 
-	// 	lseek(fd, start_range+i, SEEK_SET);
-	// 	write(fd, &new_byte, 1);
-	// 	deploy();
+		lseek(fd, start_range+i, SEEK_SET);
+		write(fd, &new_byte, 1);
+		deploy();
 
-	// 	lseek(fd, start_range+i, SEEK_SET);
-	// 	write(fd, &bytes[i], 1);
+		lseek(fd, start_range+i, SEEK_SET);
+		write(fd, &bytes[i], 1);
 
+		i++;
+	}
+
+	// i = 0;
+	// while(i < 15) {
+	// 	mask = rand();
+	// 	printf("%hhx\n",mask);
 	// 	i++;
 	// }
 
@@ -126,18 +127,22 @@ void bit_flip_in_range(int fd, int start_range, int len) {
 
 		mask = rand();
 
-		printf("%d\n", mask);
+		// printf("The mask is: %hhd\n", mask);
 
 		int byte_to_flip = rand()%(len);
 
+		// printf("byte to flip: %d\n", byte_to_flip);
+
 		char new_byte = (mask^bytes[byte_to_flip]);
+
+		// printf("New byte is %c\n", new_byte);
 
 		lseek(fd, start_range+byte_to_flip, SEEK_SET);
 		write(fd, &new_byte, 1);
 		deploy();
 
 		lseek(fd, start_range+byte_to_flip, SEEK_SET);
-		write(fd, &bytes[i], 1);
+		write(fd, &bytes[byte_to_flip], 1);
 
 		i++;
 	}
@@ -149,26 +154,7 @@ void bit_flip_in_range(int fd, int start_range, int len) {
 }
 
 
-//This function tries all combinations of bits in a particular byte.
-void bit_flip_in_byte(int fd, int byte_offset) {
-	lseek(fd, byte_offset, SEEK_SET);
-	unsigned char mask = 0;
-	char byte = 0;
-	read(fd, &byte, 1);
-	lseek(fd, byte_offset, SEEK_SET);
 
-	while (mask < 255) {
-		// printf("%d", mask);
-		char new_byte = (mask^byte);
-		write(fd, &new_byte, 1);
-		lseek(fd, byte_offset, SEEK_SET);
-		mask++;
-		deploy();
-	}
-	lseek(fd, byte_offset, SEEK_SET);
-	write(fd, &byte, 1);
-
-}
 
 int file_length(int fd) {
 	lseek(fd, 0, SEEK_SET);
@@ -190,7 +176,7 @@ int valid_num_char(char character) {
 }
 
 
-int number_end_offset(char* file_string, int num_start, int file_string_len) {
+int number_end_offset(char* file_string, int file_string_len) {
 	
 	char decimal_point = '.';
 	char minus_sign = '-';
@@ -295,9 +281,9 @@ void replace_numbers(int fd, int byte_offset) {
 
 	sscanf(file_contents,"%lf", &number);
 
-	int num_length = number_end_offset(file_contents, 0, file_len-byte_offset);
+	int num_length = number_end_offset(file_contents, file_len-byte_offset);
 
-	printf("The number length (characters): %d\n", num_length);
+	// printf("The number length (characters): %d\n", num_length);
 
 	printf("%lf\n", number);
 
@@ -408,18 +394,18 @@ void replace_strings(int fd, int byte_offset, int replace_str_len) {
 
 
 
-int main (int argc, char *argv[]) {
-	// printf("%s\n",argv[1]);
-	int fileDes = open("testdata.bin", O_RDWR);
-	// printf("The bit mask is: \n");
-	// printf("%d\n", fileDes);
-	// bit_shift_in_range(fileDes, 0, 1);
-	bit_flip_in_range(fileDes, 14, 5);
-	// replace_numbers(fileDes, 14);
-	// replace_strings(fileDes, 14, 21);
+// int main (int argc, char *argv[]) {
+// 	// printf("%s\n",argv[1]);
+// 	int fileDes = open(TESTDATA_FILE, O_RDWR);
+// 	// printf("The bit mask is: \n");
+// 	// printf("%d\n", fileDes);
+// 	bit_shift_in_range(fileDes, 0, 20);
+// 	// bit_flip_in_range(fileDes, 14, 5);
+// 	// replace_numbers(fileDes, 14);
+// 	// replace_strings(fileDes, 14, 21);
 
 
 
 
-}
+// }
 

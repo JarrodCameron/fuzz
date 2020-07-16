@@ -12,7 +12,8 @@ BINS=fuzzer
 DEPS= \
 	safe.o \
 	utils.o \
-	fuzzer.o
+	fuzzer.o \
+	mutation_functions.o
 
 all: $(BUILDDIR) $(BINS)
 

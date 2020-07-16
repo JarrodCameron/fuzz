@@ -18,6 +18,8 @@
 #include "safe.h"
 #include "utils.h"
 #include "config.h"
+#include "fuzzer.h"
+#include "mutation_functions.h"
 
 struct {
 	const char *input_file;
@@ -79,7 +81,6 @@ dump_mem(void)
 	sclose(fd);
 }
 
-static
 void
 deploy(void)
 {
@@ -133,8 +134,9 @@ main(int argc, char **argv, char **envp)
 
 	init_state(argv[1], argv[2], envp);
 
+
 	while(1)
-		deploy();
+		// deploy();
 
 	return 0;
 }
