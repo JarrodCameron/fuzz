@@ -41,5 +41,17 @@ pid_t swaitpid(pid_t pid, int *wstatus, int options);
 /* execve() wrapper */
 void sexecve(const char *pathname, char *const argv[], char *const envp[]);
 
+/* lseek() wrapper */
+off_t slseek(int fd, off_t offset, int whence);
+
+/* rename() wrapper */
+int srename(const char *oldpath, const char *newpath);
+
+/* malloc() wrapper */
+void *smalloc(size_t size);
+
+/* ftruncate() wrapper */
+int sftruncate(int fd, off_t length);
+
 #endif /* _SAFE_H_ */
 

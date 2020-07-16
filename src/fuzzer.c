@@ -18,28 +18,33 @@
 #include "safe.h"
 #include "utils.h"
 #include "config.h"
-#include "fuzzer.h"
 #include "mutation_functions.h"
+#include "ftype.h"
+#include "fuzzer.h"
+#include "fuzz_csv.h"
+#include "fuzz_json.h"
 
-struct {
-	const char *input_file;
-	struct stat stat;
+/* Helper Functions */
+static void fuzz_handle_dummy(struct state *);
+static void sig_handler(UNUSED int sig);
+static void init_state(const char *data, const char *bin, char **envp);
 
-	const char *binary;
+static struct state system_state = {0};
 
-	char **envp;
-
-	char *mem;
-
-	uint64_t deploys;
-} state = {0};
+static void (*fuzz_handles[])(struct state *) = {
+	[file_type_csv] = fuzz_handle_csv,
+	[file_type_json] = fuzz_handle_json,
+	[file_type_plain] = NULL,
+	[file_type_xml] = NULL,
+	[file_type_dummy] = fuzz_handle_dummy,
+};
 
 static
 void
 sig_handler(UNUSED int sig)
 {
-	printf("cya later\n");
-	printf("%lu\n", state.deploys);
+	printf("Exiting: cya later\n");
+	printf("# deploys: %lu\n", system_state.deploys);
 	exit(0);
 }
 
@@ -47,21 +52,21 @@ static
 void
 init_state(const char *data, const char *bin, char **envp)
 {
-	state.input_file = data;
-	state.binary = bin;
-	state.envp = envp;
+	system_state.input_file = data;
+	system_state.binary = bin;
+	system_state.envp = envp;
 
 	/* For graceful exit and some stats */
 	ssignal(SIGINT, &sig_handler); /* Control-c */
 	ssignal(SIGTERM, &sig_handler); /* timeout -v */
 
-	int fd = sopen(state.input_file, O_RDONLY);
+	int fd = sopen(system_state.input_file, O_RDONLY);
 
-	sfstat(fd, &state.stat);
+	sfstat(fd, &system_state.stat);
 
-	state.mem = smmap(
+	system_state.mem = smmap(
 		NULL,
-		state.stat.st_size,
+		system_state.stat.st_size,
 		PROT_READ | PROT_WRITE,
 		MAP_PRIVATE,
 		fd,
@@ -69,30 +74,20 @@ init_state(const char *data, const char *bin, char **envp)
 	);
 
 	sclose(fd);
-}
 
-/* Dump the contents of the mmap'd area onto disk */
-static
-void
-dump_mem(void)
-{
-	int fd = sopen(TESTDATA_FILE, O_WRONLY);
-	swrite(fd, state.mem, state.stat.st_size);
-	sclose(fd);
+	system_state.payload_fd = sopen(TESTDATA_FILE, O_RDWR | O_CREAT, 0644);
 }
 
 void
 deploy(void)
 {
-	state.deploys += 1;
+	system_state.deploys += 1;
 	int fd, wstatus;
 
 	char *const argv[] = {
-		(char *) state.binary,
+		(char *) system_state.binary,
 		NULL
 	};
-
-	dump_mem();
 
 	pid_t pid = sfork();
 
@@ -108,19 +103,39 @@ deploy(void)
 		sclose(fd);
 
 		sexecve(
-			state.binary,
+			system_state.binary,
 			argv,
-			state.envp
+			system_state.envp
 		);
 
 		break;
 
 	default: /* Parent */
 
-		waitpid(pid, &wstatus, 0);
+		swaitpid(pid, &wstatus, 0);
+
+		if (WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV) {
+			printf("$$$ SIGSEGV $$$\n");
+			srename(TESTDATA_FILE, BAD_FILE);
+			exit(0);
+		}
+
 		break;
 	}
 
+}
+
+/* This function is a place holder, just an example of an example fuzzer
+ * for a program i made up */
+static
+void
+fuzz_handle_dummy(UNUSED struct state *s)
+{
+	for (int i = 0; i < 256; i++) {
+		slseek(system_state.payload_fd, 0, SEEK_SET);
+		swrite(system_state.payload_fd, (void *) &i, sizeof(char));
+		deploy();
+	}
 }
 
 int
@@ -135,8 +150,9 @@ main(int argc, char **argv, char **envp)
 	init_state(argv[1], argv[2], envp);
 
 
-	while(1)
-		// deploy();
+	system_state.ft = detect_file(system_state.mem, system_state.input_file);
+
+	fuzz_handles[system_state.ft](&system_state);
 
 	return 0;
 }

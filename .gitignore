@@ -1,4 +1,11 @@
 testdata.bin
+bad.txt
 *.swp
 core
 *.out
+build
+cscope.out
+tags
+fuzzer
+*.o
+*.a

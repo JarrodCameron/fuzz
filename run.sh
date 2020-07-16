@@ -6,11 +6,12 @@
 # Exit on non-zero return status
 set -e
 
+rm -f testdata.bin bad.txt
 make
 
-timeout -v 180 ./fuzzer examples/csv1.txt examples/csv1
+clear
 
-#timeout -v 180 python3 fuzzer.py examples/csv1.txt examples/csv1
-
+timeout -v 180 ./fuzzer examples/json1.txt examples/json1
+#gdb --args ./fuzzer examples/json1.txt examples/json1
 
 

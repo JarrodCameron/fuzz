@@ -12,6 +12,8 @@
 
 #define NUM_OF_BIT_FLIP_ITERATIONS_CONSTANT 4
 #define NUM_OF_BIT_SHIFT_ITERATIONS_CONSTANT 4
+#define BAD_FILE "bad.txt"
+
 
 #endif /* _CONFIG_H_ */
 
