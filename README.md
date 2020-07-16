@@ -12,6 +12,7 @@ Fuzzer for comp6447
 
 - [csv\_parser](https://github.com/semitrivial/csv_parser)
 - [json\_parser](https://github.com/udp/json-parser)
+  - [json\_builder](https://github.com/udp/json-builder)
 
 # Notes from chat
 
