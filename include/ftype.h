@@ -12,7 +12,7 @@ enum file_type {
 };
 
 enum file_type
-detect_file(const char *mem, const char *file);
+detect_file(const char *file);
 
 #endif /* _FTYPE_H_ */
 
