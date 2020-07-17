@@ -6,9 +6,6 @@ detect_file(const char *file)
 {
 	// This should return the appropriate file type
 
-<<<<<<< HEAD
-	return file_type_json;
-=======
     int comma = 0;      // number of , in the text
     int curly_l = 0;    // number of { in the text
     int curly_r = 0;    // number of } in the text
@@ -70,5 +67,4 @@ detect_file(const char *file)
     fclose(fd);
 	// shouldn't ever get here
     return file_type_dummy;
->>>>>>> michelle
 }
