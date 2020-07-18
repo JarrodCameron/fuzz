@@ -41,11 +41,15 @@ static void handle_row(struct row *row, char *text);
 static void fuzz_buffer_overflow(struct state *s);
 static void try_buffer_overflow(uint64_t row, uint64_t val, struct state *s);
 static void fuzz(struct state *s);
+static void try_bad_nums(uint64_t row, uint64_t val, struct state *s);
+static void fuzz_bad_nums(struct state *s);
+static void dump_csv(struct state *s);
 
 /* Here we add functions used for fuzzing.
  * Each function tests for something different. */
 static void (*fuzz_payloads[])(struct state *) = {
 	fuzz_buffer_overflow,
+	fuzz_bad_nums,
 };
 
 void
@@ -72,8 +76,23 @@ static
 void
 fuzz(struct state *s)
 {
-	/* XXX We might want a loop here? */
-	fuzz_payloads[0](s);
+	while (1) {
+		uint32_t idx = roll_dice(0, ARRSIZE(fuzz_payloads)-1);
+		fuzz_payloads[idx](s);
+	}
+}
+
+/* Here we look for numbers in our csv file and change then to crazy values */
+static
+void
+fuzz_bad_nums(struct state *s)
+{
+	uint64_t row, val;
+	for (row = 0; row < csv.nrows; row++) {
+		for (val = 0; val < csv.rows[row].nvals; val++) {
+			try_bad_nums(row, val, s);
+		}
+	}
 }
 
 static
@@ -86,6 +105,56 @@ fuzz_buffer_overflow(struct state *s)
 			try_buffer_overflow(row, val, s);
 		}
 	}
+}
+
+static
+void
+try_bad_nums(uint64_t row, uint64_t val, struct state *s)
+{
+	char *old_val = csv.rows[row].vals[val].val;
+	uint64_t old_len = csv.rows[row].vals[val].len;
+
+	for (uint64_t i = 0; i < ARRSIZE(bad_num_strings); i++) {
+		csv.rows[row].vals[val].val = (char *) bad_num_strings[i];
+		csv.rows[row].vals[val].len = strlen(bad_num_strings[i]);
+		dump_csv(s);
+		deploy();
+	}
+
+	csv.rows[row].vals[val].val = old_val;
+	csv.rows[row].vals[val].len = old_len;
+
+}
+
+/* Write the csv file to state->payload_fd */
+static
+void
+dump_csv(struct state *s)
+{
+	off_t len = 0;
+	uint64_t r, v;
+
+	slseek(s->payload_fd, 0, SEEK_SET);
+
+	for (r = 0; r < csv.nrows; r++) { /* For each row in csv... */
+		for (v = 0; v < csv.rows[r].nvals; v++) { /* For each value in row... */
+
+			/* Write the value in the csv */
+			len += swrite(
+				s->payload_fd,
+				csv.rows[r].vals[v].val,
+				csv.rows[r].vals[v].len
+			);
+
+			/* Seperate each element by a "," unless it is the last element in
+			 * a row, then seperate with a "\n" */
+			if (v == csv.rows[r].nvals - 1)
+				len += swrite(s->payload_fd, "\n", 1);
+			else
+				len += swrite(s->payload_fd, ",", 1);
+		}
+	}
+	sftruncate(s->payload_fd, len);
 }
 
 static

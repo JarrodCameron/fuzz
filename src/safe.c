@@ -154,3 +154,12 @@ sftruncate(int fd, off_t length)
 		panic("Error: ftruncate(%d, %lu)\n", fd, length);
 	return ret;
 }
+
+ssize_t
+sread(int fd, void *buf, size_t count)
+{
+	ssize_t ret = read(fd, buf, count);
+	if (ret < 0)
+		panic("Error: read(%d, %p, %lu)\n", fd, buf, count);
+	return ret;
+}
