@@ -101,6 +101,11 @@ bool isint(const char *s, uint64_t len);
  * For example: roll_dice(2, 4) -> {2, 3, 4} */
 uint32_t roll_dice(uint32_t lo, uint32_t hi);
 
+/* Flip a bias coin. The bias is between zero and 100. This is done by
+ * generating a random number. If the rand number is less than the bias
+ * return 1, else return 0. */
+uint32_t coin_flip(uint32_t bias);
+
 /* When shit hits the fan, print this string and abort() */
 NORETURN void panic(const char *fmt, ...);
 

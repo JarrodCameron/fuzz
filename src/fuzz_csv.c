@@ -45,12 +45,15 @@ static void fuzz(struct state *s);
 static void try_bad_nums(uint64_t row, uint64_t val, struct state *s);
 static void fuzz_bad_nums(struct state *s);
 static void dump_csv(struct state *s);
+static void fuzz_populate(struct state *s);
+static off_t dump_row(int fd, struct row *row);
 
 /* Here we add functions used for fuzzing.
  * Each function tests for something different. */
 static void (*fuzz_payloads[])(struct state *) = {
 	fuzz_buffer_overflow,
 	fuzz_bad_nums,
+	fuzz_populate,
 };
 
 void
@@ -83,6 +86,53 @@ fuzz(struct state *s)
 		uint32_t idx = roll_dice(0, ARRSIZE(fuzz_payloads)-1);
 		fuzz_payloads[idx](s);
 	}
+}
+
+/* For each row in the csv, flip a bias coin to see if we should
+ * print it or not */
+static
+void
+fuzz_populate(struct state *s)
+{
+	uint64_t i, len = 0;
+
+	slseek(s->payload_fd, 0, SEEK_SET);
+
+	for (i = 0; i < csv.nrows; i++) {
+		if (coin_flip(90)) {
+			len += dump_row(s->payload_fd, &(csv.rows[i]));
+			i--;
+		}
+	}
+	sftruncate(s->payload_fd, len);
+	deploy();
+}
+
+/* Print the row to the file, simple */
+static
+off_t
+dump_row(int fd, struct row *row)
+{
+	off_t len = 0;
+
+	for (uint64_t v = 0; v < row->nvals; v++) {
+
+		/* Write the value in the csv */
+		len += swrite(
+			fd,
+			row->vals[v].val,
+			row->vals[v].len
+		);
+
+		/* Seperate each element by a "," unless it is the last element in
+		 * a row, then seperate with a "\n" */
+		if (v == row->nvals - 1)
+			len += swrite(fd, "\n", 1);
+		else
+			len += swrite(fd, ",", 1);
+	}
+
+	return len;
 }
 
 /* Here we look for numbers in our csv file and change then to crazy values */

@@ -48,6 +48,12 @@ roll_dice(uint32_t lo, uint32_t hi)
 	return (rand() % (hi - lo + 1)) + lo;
 }
 
+uint32_t
+coin_flip(uint32_t bias)
+{
+	return roll_dice(0, 99) < bias;
+}
+
 static
 bool
 char_is_num(char c)
