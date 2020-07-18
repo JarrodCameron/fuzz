@@ -9,6 +9,7 @@
 #include "utils.h"
 #include "json.h"
 #include "json-builder.h"
+#include "mutation_functions.h"
 
 static struct {
 
@@ -57,6 +58,9 @@ void
 fuzz(struct state *s)
 {
 	/* XXX We might want a loop here? */
+	//Example of a call
+	printf("Hello");
+	bit_shift_in_range(s->payload_fd, 0 ,0);
 	fuzz_payloads[0](s);
 }
 

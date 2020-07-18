@@ -8,6 +8,7 @@
 #include "fuzzer.h"
 #include "safe.h"
 #include "utils.h"
+#include "mutation_functions.h"
 
 struct value {
 	uint64_t len;
@@ -73,6 +74,9 @@ void
 fuzz(struct state *s)
 {
 	/* XXX We might want a loop here? */
+	//Example of a call
+	bit_shift_in_range(s->payload_fd, 0 ,0);
+	// printf("Hello world");
 	fuzz_payloads[0](s);
 }
 
