@@ -7,7 +7,7 @@
 
 
 
-#include<stdio.h>
+#include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -19,8 +19,9 @@
 
 
 #include "config.h"
-#include "mutation_functions.h"
 #include "fuzzer.h"
+#include "mutation_functions.h"
+#include "safe.h"
 
 
 // void deploy() {
@@ -46,7 +47,7 @@ void bit_shift_in_range(int fd, int start_range, int len) {
 	srand(start_range);
 
 	while (i < len) {
-		shift = (rand()%7) + 1; //Don't want shift it by 0 bits 
+		shift = (rand()%7) + 1; //Don't want shift it by 0 bits
 		char new_byte = (bytes[i] << shift);
 
 		lseek(fd, start_range+i, SEEK_SET);
@@ -64,7 +65,7 @@ void bit_shift_in_range(int fd, int start_range, int len) {
 	while(i < len*NUM_OF_BIT_SHIFT_ITERATIONS_CONSTANT) {
 		int byte_to_shift = rand()%len;
 
-		shift = (rand()%7) + 1; //Don't want shift it by 0 bits 
+		shift = (rand()%7) + 1; //Don't want shift it by 0 bits
 		char new_byte = (bytes[byte_to_shift] << shift);
 
 		lseek(fd, start_range+byte_to_shift, SEEK_SET);
@@ -164,20 +165,12 @@ int file_length(int fd) {
 
 
 int valid_num_char(char character) {
-	int counter = 0;
-	char valid_num_chars[] = "1234567890";
-	while (counter <10) {
-		if(character == valid_num_chars[counter]){
-			return TRUE;
-		}
-		counter++;
-	}
-	return FALSE;
+	return ('0' <= character) && (character <= '9');
 }
 
 
 int number_end_offset(char* file_string, int file_string_len) {
-	
+
 	char decimal_point = '.';
 	char minus_sign = '-';
 
@@ -267,23 +260,18 @@ void write_float_number(int fd, int byte_offset, char* file_contents, int num_le
 // byte_offset, the offset of the file for which the number it is, it can be a float or integer
 void replace_numbers(int fd, int byte_offset) {
 	int file_len = file_length(fd);
-	lseek(fd, byte_offset, SEEK_SET);
+	slseek(fd, byte_offset, SEEK_SET);
 
 
 
-	char* file_contents = malloc(file_len- byte_offset);
-	read(fd, file_contents, file_len-byte_offset);
+	char* file_contents = smalloc(file_len- byte_offset);
+	sread(fd, file_contents, file_len-byte_offset);
 
-	// printf("%c\n",file_contents[0]);
 	double number = 0;
-
-	// printf("The file contents is: %s\n",file_contents);
 
 	sscanf(file_contents,"%lf", &number);
 
 	int num_length = number_end_offset(file_contents, file_len-byte_offset);
-
-	// printf("The number length (characters): %d\n", num_length);
 
 	printf("%lf\n", number);
 
@@ -292,7 +280,7 @@ void replace_numbers(int fd, int byte_offset) {
 	write_int_number(fd, byte_offset, file_contents, num_length, -1);
 	write_int_number(fd, byte_offset, file_contents, num_length, -2);
 	write_int_number(fd, byte_offset, file_contents, num_length, abs((int)number));
-	
+
 
 	write_int_number(fd, byte_offset, file_contents, num_length, CHAR_MIN-1);
 	write_int_number(fd, byte_offset, file_contents, num_length, CHAR_MAX+1);
@@ -302,16 +290,16 @@ void replace_numbers(int fd, int byte_offset) {
 	write_int_number(fd, byte_offset, file_contents, num_length, (long)INT_MIN-1);
 	write_int_number(fd, byte_offset, file_contents, num_length, INT_MAX);
 	write_int_number(fd, byte_offset, file_contents, num_length, (long)INT_MAX+1);
-	
+
 	write_float_number(fd, byte_offset, file_contents, num_length, 0.1);
 	write_float_number(fd, byte_offset, file_contents, num_length, -0.1);
 	write_float_number(fd, byte_offset, file_contents, num_length, (double)1/3);
 	write_float_number(fd, byte_offset, file_contents, num_length, M_PI);
-	
 
-	lseek(fd, byte_offset, SEEK_SET);
-	write(fd, file_contents, file_len-byte_offset);
-	ftruncate(fd,file_len);
+
+	slseek(fd, byte_offset, SEEK_SET);
+	swrite(fd, file_contents, file_len-byte_offset);
+	sftruncate(fd,file_len);
 	free(file_contents);
 
 
@@ -374,15 +362,15 @@ void replace_strings(int fd, int byte_offset, int replace_str_len) {
 
 	write_string(fd, byte_offset, replace_str_len, format_string, format_string_len);
 
-	write_string(fd, byte_offset, replace_str_len, format_string2, format_string2_len);	
+	write_string(fd, byte_offset, replace_str_len, format_string2, format_string2_len);
 
-	write_string(fd, byte_offset, replace_str_len, buffer_overflow, buffer_overflow_len);	
+	write_string(fd, byte_offset, replace_str_len, buffer_overflow, buffer_overflow_len);
 
 	write_string(fd, byte_offset, replace_str_len, newline_break, newline_break_len);
 
 	write_string(fd, byte_offset, replace_str_len, null_ptr_break, null_ptr_break_len);
 
-	write_string(fd, byte_offset, replace_str_len, new_line_null_ptr, new_line_null_ptr_len);	
+	write_string(fd, byte_offset, replace_str_len, new_line_null_ptr, new_line_null_ptr_len);
 
 	write_string(fd, byte_offset, replace_str_len, empty_string, empty_string_len);
 

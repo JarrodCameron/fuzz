@@ -14,6 +14,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <sys/mman.h>
+#include <time.h>
 
 #include "safe.h"
 #include "utils.h"
@@ -147,9 +148,13 @@ main(int argc, char **argv, char **envp)
 		exit(1);
 	}
 
+	srand(time(NULL));
+
 	init_state(argv[1], argv[2], envp);
 
 	system_state.ft = detect_file(system_state.input_file);
+
+	printf("FILE TYPE -> %s\n", dbg_file_type(system_state.ft));
 
 	fuzz_handles[system_state.ft](&system_state);
 

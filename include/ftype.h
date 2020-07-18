@@ -14,5 +14,8 @@ enum file_type {
 enum file_type
 detect_file(const char *file);
 
+const char *
+dbg_file_type(enum file_type);
+
 #endif /* _FTYPE_H_ */
 

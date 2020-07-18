@@ -1,5 +1,7 @@
 #include <stdio.h>
+
 #include "ftype.h"
+#include "utils.h"
 
 enum file_type
 detect_file(const char *file)
@@ -42,7 +44,7 @@ detect_file(const char *file)
                 break;
             default:
                 break;
-        }   
+        }
     }
 
     // printf("%d comma, %d {, %d }, %d <, %d >, %d lines\n", comma, curly_l, curly_r, angle_l, angle_r, line);
@@ -62,9 +64,23 @@ detect_file(const char *file)
     } else {
         // printf("plaintext file found\n");
         return file_type_plain;
-    } 
+    }
 
     fclose(fd);
 	// shouldn't ever get here
     return file_type_dummy;
+}
+
+/* Return the name of the file_type, good for debugging */
+const char *
+dbg_file_type(enum file_type ft)
+{
+	switch (ft) {
+	case file_type_csv: return "file_type_csv";
+	case file_type_json: return "file_type_json";
+	case file_type_plain: return "file_type_plain";
+	case file_type_xml: return "file_type_xml";
+	case file_type_dummy: return "file_type_dummy";
+	}
+	panic("wtf");
 }

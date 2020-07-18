@@ -1,4 +1,5 @@
 #ifndef _SAFE_H_
+
 #define _SAFE_H_
 
 /* Here is a wrapper around pretty much every function call. If the function
@@ -52,6 +53,9 @@ void *smalloc(size_t size);
 
 /* ftruncate() wrapper */
 int sftruncate(int fd, off_t length);
+
+/* read() wrapper */
+ssize_t sread(int fd, void *buf, size_t count);
 
 #endif /* _SAFE_H_ */
 
