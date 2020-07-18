@@ -24,6 +24,7 @@ all: $(BUILDDIR) $(BINS)
 fuzzer: $(addprefix $(BUILDDIR)/, $(DEPS))
 	make -C libs
 	$(CC) -static -o fuzzer $(addprefix $(BUILDDIR)/, $(DEPS)) -Llibs -lcsv -ljsonparser -lm
+	@echo ':)'
 
 $(BUILDDIR):
 	mkdir -p $(BUILDDIR)

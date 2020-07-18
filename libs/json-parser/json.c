@@ -1037,3 +1037,17 @@ void json_value_free (json_value * value)
    json_value_free_ex (&settings, value);
 }
 
+const char *json_type_str(json_type jt)
+{
+   switch (jt) {
+      case json_none: return "json_none";
+      case json_object: return "json_object";
+      case json_array: return "json_array";
+      case json_integer: return "json_integer";
+      case json_double: return "json_double";
+      case json_string: return "json_string";
+      case json_boolean: return "json_boolean";
+      case json_null: return "json_null";
+   }
+   return "[[[UNKOWN TYPE]]]";
+}

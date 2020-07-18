@@ -161,5 +161,6 @@ void json_value_free (json_value *);
 void json_value_free_ex (json_settings * settings,
                          json_value *);
 
+const char *json_type_str(json_type jt);
 
 #endif

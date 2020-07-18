@@ -11,7 +11,7 @@ make
 
 clear
 
-timeout -v 180 ./fuzzer examples/csv2.txt examples/csv2
+timeout -v 180 ./fuzzer examples/json1.txt examples/json1
 #gdb --args ./fuzzer examples/json1.txt examples/json1
 
 

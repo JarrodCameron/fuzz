@@ -117,9 +117,9 @@ try_bad_nums(uint64_t row, uint64_t val, struct state *s)
 	char *old_val = csv.rows[row].vals[val].val;
 	uint64_t old_len = csv.rows[row].vals[val].len;
 
-	for (uint64_t i = 0; i < ARRSIZE(bad_num_strings); i++) {
-		csv.rows[row].vals[val].val = (char *) bad_num_strings[i];
-		csv.rows[row].vals[val].len = strlen(bad_num_strings[i]);
+	for (uint64_t i = 0; i < ARRSIZE(bad_nums); i++) {
+		csv.rows[row].vals[val].val = (char *) bad_nums[i].s;
+		csv.rows[row].vals[val].len = strlen(bad_nums[i].s);
 		dump_csv(s);
 		deploy();
 	}

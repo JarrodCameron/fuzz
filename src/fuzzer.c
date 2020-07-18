@@ -154,8 +154,6 @@ main(int argc, char **argv, char **envp)
 
 	system_state.ft = detect_file(system_state.input_file);
 
-	printf("FILE TYPE -> %s\n", dbg_file_type(system_state.ft));
-
 	fuzz_handles[system_state.ft](&system_state);
 
 	return 0;
