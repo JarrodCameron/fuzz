@@ -17,7 +17,6 @@
 #include <limits.h>
 #include <math.h>
 
-
 #include "config.h"
 #include "fuzzer.h"
 #include "mutation_functions.h"
@@ -36,26 +35,27 @@
 // 	close(fileDes);
 // }
 
-void bit_shift_in_range(int fd, int start_range, int len) {
+void
+bit_shift_in_range(int fd, uint32_t start_range, uint32_t len)
+{
 
-	lseek(fd, start_range, SEEK_SET);
+	slseek(fd, start_range, SEEK_SET);
 	int shift = 0;
-	char *bytes = malloc(sizeof(char)*len);
-	read(fd, bytes, len);
-	lseek(fd, start_range, SEEK_SET);
-	int i = 0;
-	srand(start_range);
+	char *bytes = smalloc(sizeof(char)*len);
+	sread(fd, bytes, len);
+	slseek(fd, start_range, SEEK_SET);
+	uint32_t i = 0;
 
 	while (i < len) {
 		shift = (rand()%7) + 1; //Don't want shift it by 0 bits
 		char new_byte = (bytes[i] << shift);
 
-		lseek(fd, start_range+i, SEEK_SET);
-		write(fd, &new_byte, 1);
+		slseek(fd, start_range+i, SEEK_SET);
+		swrite(fd, &new_byte, 1);
 		deploy();
 
-		lseek(fd, start_range+i, SEEK_SET);
-		write(fd, &bytes[i], 1);
+		slseek(fd, start_range+i, SEEK_SET);
+		swrite(fd, &bytes[i], 1);
 
 		i++;
 
@@ -68,21 +68,22 @@ void bit_shift_in_range(int fd, int start_range, int len) {
 		shift = (rand()%7) + 1; //Don't want shift it by 0 bits
 		char new_byte = (bytes[byte_to_shift] << shift);
 
-		lseek(fd, start_range+byte_to_shift, SEEK_SET);
-		write(fd, &new_byte, 1);
+		slseek(fd, start_range+byte_to_shift, SEEK_SET);
+		swrite(fd, &new_byte, 1);
 
 		deploy();
 
-		lseek(fd, start_range+byte_to_shift, SEEK_SET);
-		write(fd, &bytes[byte_to_shift], 1);
+		slseek(fd, start_range+byte_to_shift, SEEK_SET);
+		swrite(fd, &bytes[byte_to_shift], 1);
 
 
 		i++;
 
 	}
 
-	lseek(fd, start_range, SEEK_SET);
-	write(fd, bytes, len);
+	slseek(fd, start_range, SEEK_SET);
+	swrite(fd, bytes, len);
+	free(bytes);
 
 }
 
@@ -98,8 +99,6 @@ void bit_flip_in_range(int fd, int start_range, int len) {
 	lseek(fd, start_range, SEEK_SET);
 
 	// printf("%c\n",bytes[1]);
-
-	srand(start_range);
 
 	int i = 0;
 	while (i < len) {
@@ -377,23 +376,4 @@ void replace_strings(int fd, int byte_offset, int replace_str_len) {
 	return;
 
 }
-
-
-
-
-
-// int main (int argc, char *argv[]) {
-// 	// printf("%s\n",argv[1]);
-// 	int fileDes = open(TESTDATA_FILE, O_RDWR);
-// 	// printf("The bit mask is: \n");
-// 	// printf("%d\n", fileDes);
-// 	bit_shift_in_range(fileDes, 0, 20);
-// 	// bit_flip_in_range(fileDes, 14, 5);
-// 	// replace_numbers(fileDes, 14);
-// 	// replace_strings(fileDes, 14, 21);
-
-
-
-
-// }
 

@@ -29,12 +29,13 @@ typedef void (*jv_handle)(json_value *);
 /* Helper functions */
 static void fuzz(struct state *s);
 static void fuzz_buffer_overflow(struct state *s);
-static void json_dump(struct state *s);
+static size_t json_dump(struct state *s);
 static void traverse_json(json_value *jv, joe_handle joeh, jv_handle jvh);
 static void fuzz_bad_nums(struct state *s);
 static void traverse_json_object(json_value *, joe_handle, jv_handle);
 static void traverse_json_array(json_value *, joe_handle, jv_handle);
 static void fuzz_fmt_str(struct state *s);
+static void fuzz_bit_shift(struct state *s);
 
 /* Here we add functions used for fuzzing.
  * Each function tests for something different. */
@@ -42,6 +43,7 @@ static void (*fuzz_payloads[])(struct state *) = {
 	fuzz_buffer_overflow,
 	fuzz_bad_nums,
 	fuzz_fmt_str,
+	fuzz_bit_shift,
 };
 
 void
@@ -69,7 +71,7 @@ void
 fuzz(struct state *s)
 {
 	//Example of a call
-	bit_shift_in_range(s->payload_fd, 0 ,0);
+//	bit_shift_in_range(s->payload_fd, 0 ,0);
 	while (1) {
 		uint32_t idx = roll_dice(0, ARRSIZE(fuzz_payloads)-1);
 		fuzz_payloads[idx](s);
@@ -154,9 +156,10 @@ fuzz_buffer_overflow(struct state *s)
 	traverse_json(json.jv, &f, NULL);
 }
 
-/* Dump the json_value into the payload_fd file */
+/* Dump the json_value into the payload_fd file, return the length of the json
+ * object */
 static
-void
+size_t
 json_dump(struct state *s)
 {
 	size_t len = json_measure(json.jv);
@@ -166,6 +169,7 @@ json_dump(struct state *s)
 	slseek(s->payload_fd, 0, SEEK_SET);
 	swrite(s->payload_fd, json.mem, len);
 	sftruncate(s->payload_fd, len);
+	return len;
 }
 
 static
@@ -239,4 +243,32 @@ fuzz_fmt_str(struct state *s)
 
 	traverse_json(json.jv, NULL, &f1);
 	traverse_json(json.jv, &f2, NULL);
+}
+
+static
+void
+fuzz_bit_shift(struct state *s)
+{
+	size_t offset, len = json_dump(s);
+
+	for (size_t i = 0; i < len; i++) {
+		char ch = json.mem[i];
+
+		switch (ch) {
+		case '\\':
+		case '\n':
+		case '"':
+		case ',':
+		case '/':
+		case ':':
+		case '[':
+		case ']':
+		case '{':
+		case '}':
+			offset = i + roll_dice(1, 10); /* Fuzz some neighbouring bytes */
+			offset = MIN(offset, len); /* Don't want to fuzz past the file */
+			bit_shift_in_range(s->payload_fd, i, offset-i);
+			break;
+		}
+	}
 }

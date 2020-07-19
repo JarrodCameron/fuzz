@@ -25,6 +25,8 @@
 #define NORETURN __attribute__((noreturn))
 #define BP() __asm__("int3")
 #define ARRSIZE(A) (sizeof(A)/sizeof(A[0]))
+#define MIN(A,B) ((A<B)?(A):(B))
+#define MAX(A,B) ((A>B)?(A):(B))
 
 /* Yanked these bad boys from:
  *     https://github.com/google/AFL/blob/master/config.h#L227

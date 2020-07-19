@@ -1,11 +1,13 @@
 #ifndef _MUTATION_FUNC_H_
 #define _MUTATION_FUNC_H_
 
+#include <stdint.h>
+
 //args
 // fd: file descriptor
 // start_range: the start index of the bits you want to shift
 // len: number of bytes you wish to shift e.g. will shift bytes from start_range:start_range+len
-void bit_shift_in_range(int fd, int start_range, int len);
+void bit_shift_in_range(int fd, uint32_t start_range, uint32_t len);
 
 //args
 // fd: file descriptor
