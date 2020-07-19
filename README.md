@@ -1,6 +1,14 @@
 # fuzz
 Fuzzer for comp6447
 
+```
+# Creat tar archive
+tar -cf fuzzer.tar fuzzer
+
+# Open tar archive
+tar -xf fuzzer.tar
+```
+
 # Benchmark
 
 | What                                                 | # iters |
@@ -35,21 +43,4 @@ Fuzzer for comp6447
 # Paper from shan
 
 https://arxiv.org/pdf/1812.00140.pdf
-
-# todo
-
-jarrod -
-- finding library of parsing file
-- checking return value of victim
-- remind group of group meeting (3:45pm Monday 13/07/2020)
-
-michelle
-- identify file format
-
-brandon
-- generic functions for modifying the testdatab.bin file
-
-shan
-- Given a parsed file, figure out what/where to fuzz
-
 
