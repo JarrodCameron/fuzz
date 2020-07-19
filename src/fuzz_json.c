@@ -70,8 +70,6 @@ static
 void
 fuzz(struct state *s)
 {
-	//Example of a call
-//	bit_shift_in_range(s->payload_fd, 0 ,0);
 	while (1) {
 		uint32_t idx = roll_dice(0, ARRSIZE(fuzz_payloads)-1);
 		fuzz_payloads[idx](s);
