@@ -34,12 +34,14 @@ static void traverse_json(json_value *jv, joe_handle joeh, jv_handle jvh);
 static void fuzz_bad_nums(struct state *s);
 static void traverse_json_object(json_value *, joe_handle, jv_handle);
 static void traverse_json_array(json_value *, joe_handle, jv_handle);
+static void fuzz_fmt_str(struct state *s);
 
 /* Here we add functions used for fuzzing.
  * Each function tests for something different. */
 static void (*fuzz_payloads[])(struct state *) = {
 	fuzz_buffer_overflow,
 	fuzz_bad_nums,
+	fuzz_fmt_str,
 };
 
 void
@@ -126,7 +128,7 @@ traverse_json_array(json_value *jv, joe_handle joeh, jv_handle jvh)
 	for (unsigned int i = 0; i < jv->u.object.length; i++) {
 		json_value *value = jv->u.array.values[i];
 
-		traverse_json_array(value, joeh, jvh);
+		traverse_json(value, joeh, jvh);
 	}
 }
 
@@ -189,3 +191,52 @@ fuzz_bad_nums(struct state *s)
 	traverse_json(json.jv, NULL, &f);
 }
 
+static
+void
+fuzz_fmt_str(struct state *s)
+{
+	/* Set json_strings to known format strings */
+	void
+	f1(json_value *jv)
+	{
+		if (jv->type != json_string)
+			return;
+
+		json_char *old_str = jv->u.string.ptr;
+		unsigned int old_len = jv->u.string.length;
+
+		for (uint32_t i = 0; i < ARRSIZE(fmt_strings); i++) {
+
+			jv->u.string.ptr = (char *) fmt_strings[i];
+			jv->u.string.length = strlen(fmt_strings[i]);
+
+			json_dump(s);
+			deploy();
+		}
+
+		jv->u.string.ptr = old_str;
+		jv->u.string.length = old_len;
+	}
+
+	/* Set entries to known format strings */
+	void
+	f2(json_object_entry *entry)
+	{
+		json_char *old_name = entry->name;
+		unsigned int old_len = entry->name_length;
+
+		for (uint32_t i = 0; i < ARRSIZE(fmt_strings); i++) {
+			entry->name = (char *) fmt_strings[i];
+			entry->name_length = strlen(fmt_strings[i]);
+
+			json_dump(s);
+			deploy();
+		}
+
+		entry->name = old_name;
+		entry->name_length = old_len;
+	}
+
+	traverse_json(json.jv, NULL, &f1);
+	traverse_json(json.jv, &f2, NULL);
+}
