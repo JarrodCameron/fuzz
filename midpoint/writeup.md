@@ -9,19 +9,18 @@
 
 # Fuzzing Strategies
 
-- **Bit flip and bit shifts**: This strategy is less focused and works to
-  simply change bit within a specific range. This has the effect of randomising
-  characters. This is particularly useful for changing control characters of a
-  file such as `,` for CSV `{}` for JSON and `<>` for XML among others.
+- **Buffer overflow**: This strategy is a simple and clean changing of a field to 
+  contain an extremely large input with the idea that when an extremely large input is 
+  parsed it will result in a buffer overflow.
 
 - **Writing numbers**: This strategy is tailored to changing numbers within an
   input. This aims to overwrite sensitive numbers in the input. Swapping
   integers with floats, negative numbers, numbers that would overflow default
-  data types and 0s.
+  data types, 0s and inputs that are likely to cause an overflow for the program
+  when incremented or decremented by the program.
 
-- **Writing strings**: This strategy replace sections of the input with
-  functions that aim to cause crashes such as format strings, buffer overflows,
-  numbers and control characters such as newlines and null terminators.
+- **Removing lines**: This strategy removes various lines from the sample input 
+  and supplying that to the program as a form of mutation.
 
 # File Detection
 
@@ -59,6 +58,7 @@ will be used, however it is not available for the midpoint submission.
 ## Fuzzing Strategies
 
 - Adding further mutations strategies.
+- Adding further mutation strategies
 - Combining mutation strategies. E.g. bit flip in section X and mutate numbers
   in section Y
 
