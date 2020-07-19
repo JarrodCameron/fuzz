@@ -1,8 +1,9 @@
-#include <stdio.h>
-#include <sys/mman.h>
-#include <stdlib.h>
+#include <assert.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/mman.h>
 
 #include "fuzzer.h"
 #include "safe.h"
@@ -31,6 +32,8 @@ static void fuzz_buffer_overflow(struct state *s);
 static void json_dump(struct state *s);
 static void traverse_json(json_value *jv, joe_handle joeh, jv_handle jvh);
 static void fuzz_bad_nums(struct state *s);
+static void traverse_json_object(json_value *, joe_handle, jv_handle);
+static void traverse_json_array(json_value *, joe_handle, jv_handle);
 
 /* Here we add functions used for fuzzing.
  * Each function tests for something different. */
@@ -84,48 +87,46 @@ static
 void
 traverse_json(json_value *jv, joe_handle joeh, jv_handle jvh)
 {
-	unsigned int i, j;
+	if (jvh)
+		jvh(jv);
 
-	if (jv->type != json_object)
-		panic(
-			"This function does not now how to handle this type: %s\n",
-			jv->type
-		);
+	if (jv->type != json_object && jv->type != json_array)
+		return; /* We only recurse on certain json objects */
 
-	for (i = 0; i < jv->u.object.length; i++) {
+	if (jv->type == json_object) {
+		traverse_json_object(jv, joeh, jvh);
+	} else if (jv->type == json_array) {
+		traverse_json_array(jv, joeh, jvh);
+	}
+}
+
+static
+void
+traverse_json_object(json_value *jv, joe_handle joeh, jv_handle jvh)
+{
+	assert(jv->type == json_object);
+
+	for (unsigned int i = 0; i < jv->u.object.length; i++) {
 		json_object_entry *entry = &(jv->u.object.values[i]);
+		json_value *value = jv->u.object.values[i].value;
+
 		if (joeh)
 			joeh(entry);
 
-		/* TODO make handler for: json_none */
-		/* TODO make handler for: json_double */
-		/* TODO make handler for: json_boolean */
-		/* TODO make handler for: json_null */
+		traverse_json(value, joeh, jvh);
+	}
+}
 
-		/* XXX This MIGHT segfault if entry->value is NULL,
-		 * I am not sure if it is possible to have an entry without a
-		 *   corrosponding value, if so then this WILL segfault */
-		switch (entry->value->type) {
-		case json_string:
-		case json_integer:
-			if (jvh)
-				jvh(entry->value);
-			break;
+static
+void
+traverse_json_array(json_value *jv, joe_handle joeh, jv_handle jvh)
+{
+	assert(jv->type == json_array);
 
-		case json_array:
-			for (j = 0; j < entry->value->u.array.length; j++) {
-				if (jvh)
-					jvh(entry->value); /* TODO This should recurse */
-			}
-			break;
+	for (unsigned int i = 0; i < jv->u.object.length; i++) {
+		json_value *value = jv->u.array.values[i];
 
-		case json_object:
-			traverse_json(entry->value, joeh, jvh);
-			break;
-
-		default:
-			panic("Add a case for: %s\n", json_type_str(entry->value->type));
-		}
+		traverse_json_array(value, joeh, jvh);
 	}
 }
 

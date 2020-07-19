@@ -11,7 +11,17 @@ make
 
 clear
 
-timeout -v 180 ./fuzzer examples/csv1.txt examples/csv1
-#gdb --args ./fuzzer examples/json1.txt examples/json1
+if [ "$#" -lt '1' ]; then
+       echo 'Usage: ./run.sh <prog>'
+       exit 1
+fi
 
+f="$1"
+
+if [ ! -e 'examples/'"$f" ]; then
+       echo 'examples/'"$f"' does not exist!'
+       exit 2
+fi
+
+timeout --foreground -v 180 ./fuzzer examples/"$f".txt examples/"$f"
 
