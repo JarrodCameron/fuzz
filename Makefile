@@ -9,21 +9,14 @@ SRCDIR=src
 BUILDDIR=build
 BINS=fuzzer
 
-DEPS= \
-	safe.o \
-	utils.o \
-	fuzzer.o \
-	mutation_functions.o \
-	fuzz_csv.o \
-	fuzz_json.o \
-	ftype.o
-
+SRC=$(shell ls $(SRCDIR))
+OBJS=$(SRC:.c=.o)
 
 all: $(BUILDDIR) $(BINS)
 
-fuzzer: $(addprefix $(BUILDDIR)/, $(DEPS))
+fuzzer: $(addprefix $(BUILDDIR)/, $(OBJS))
 	make -C libs
-	$(CC) -static -o fuzzer $(addprefix $(BUILDDIR)/, $(DEPS)) -Llibs -lcsv -ljsonparser -lm
+	$(CC) -static -o fuzzer $^ -Llibs -lcsv -ljsonparser -lm
 	@echo ':)'
 
 $(BUILDDIR):
