@@ -163,3 +163,12 @@ sread(int fd, void *buf, size_t count)
 		panic("Error: read(%d, %p, %lu)\n", fd, buf, count);
 	return ret;
 }
+
+int
+spipe(int pipefd[2])
+{
+	int ret = pipe(pipefd);
+	if (ret < 0)
+		panic("Error: pipe[%d, %d]\n", pipefd[0], pipefd[1]);
+	return ret;
+}

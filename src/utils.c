@@ -54,6 +54,15 @@ coin_flip(uint32_t bias)
 	return roll_dice(0, 99) < bias;
 }
 
+uint64_t
+arr_len(const void **arr)
+{
+	uint64_t i = 0;
+	while(arr[i])
+		i++;
+	return i;
+}
+
 static
 bool
 char_is_num(char c)

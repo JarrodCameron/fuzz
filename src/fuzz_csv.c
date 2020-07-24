@@ -37,7 +37,6 @@ static struct {
 } csv = {0};
 
 /* Helper functions */
-static uint64_t arr_len(char **arr);
 static void handle_row(struct row *row, char *text);
 static void fuzz_buffer_overflow(struct state *s);
 static void try_buffer_overflow(uint64_t row, uint64_t val, struct state *s);
@@ -63,7 +62,7 @@ fuzz_handle_csv(struct state *state)
 	if(!rows)
 		panic("Failed to init csv parser\n");
 
-	csv.nrows = arr_len(rows);
+	csv.nrows = arr_len((const void **)rows);
 	csv.rows = smalloc(sizeof(struct row) * csv.nrows);
 
 	/* Now we split all the values in a given row of the csv */
@@ -254,7 +253,7 @@ handle_row(struct row *row, char *text)
 		panic("Failed to split csv line: \"%s\"\n", text);
 
 	row->row = text;
-	row->nvals = arr_len(arr);
+	row->nvals = arr_len((const void **) arr);
 	row->vals = smalloc(sizeof(struct value) * csv.nrows);
 
 	for (uint64_t i = 0; i < row->nvals; i++) {
@@ -265,14 +264,3 @@ handle_row(struct row *row, char *text)
 	free(arr);
 }
 
-/* Return the number of items in the array. This function assumes the last
- * element in the array is NULL. */
-static
-uint64_t
-arr_len(char **arr)
-{
-	uint64_t i = 0;
-	while(arr[i])
-		i++;
-	return i;
-}

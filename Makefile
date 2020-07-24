@@ -8,16 +8,21 @@ INCDIR=include
 SRCDIR=src
 BUILDDIR=build
 BINS=fuzzer
+SHARED=shared32.so shared64.so
 
 SRC=$(shell ls $(SRCDIR))
 OBJS=$(SRC:.c=.o)
 
-all: $(BUILDDIR) $(BINS)
+all: $(BUILDDIR) $(SHARED) $(BINS)
 
 fuzzer: $(addprefix $(BUILDDIR)/, $(OBJS))
 	make -C libs
 	$(CC) -static -o fuzzer $^ -Llibs -lcsv -ljsonparser -lm
 	@echo ':)'
+
+$(SHARED): shared/shared.c
+	make -C shared $@
+	cp shared/$@ .
 
 $(BUILDDIR):
 	mkdir -p $(BUILDDIR)
@@ -27,4 +32,5 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.c
 
 clean:
 	make -C libs clean
-	rm -rf $(BUILDDIR) $(BINS) testdata.bin
+	make -C shared clean
+	rm -rf $(BUILDDIR) $(BINS) testdata.bin $(SHARED)

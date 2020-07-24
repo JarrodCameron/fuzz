@@ -9,3 +9,4 @@ tags
 fuzzer
 *.o
 *.a
+*.so

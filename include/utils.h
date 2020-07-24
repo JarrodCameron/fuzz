@@ -83,6 +83,10 @@ uint32_t roll_dice(uint32_t lo, uint32_t hi);
  * return 1, else return 0. */
 uint32_t coin_flip(uint32_t bias);
 
+/* Return the number of items in the array. This function assumes the last
+ * element in the array is NULL. */
+uint64_t arr_len(const void **arr);
+
 /* When shit hits the fan, print this string and abort() */
 NORETURN void panic(const char *fmt, ...);
 

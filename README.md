@@ -15,6 +15,10 @@ tar -xf fuzzer.tar
 |------------------------------------------------------|---------|
 | Passing `csv1.txt` to `csv1` in python3              | 214920  |
 | Passing `csv1.txt` to `csv1` in C                    | 375907  |
+| Fuzzing `csv1` without fork server                   | 218217  |
+| Fuzzing `csv1` with fork server                      | 426584  |
+| Fuzzing `json1` without fork server                  | 11415   |
+| Fuzzing `json1` with fork server                     | 16537   |
 
 # Shared libs
 

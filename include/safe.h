@@ -1,5 +1,4 @@
 #ifndef _SAFE_H_
-
 #define _SAFE_H_
 
 /* Here is a wrapper around pretty much every function call. If the function
@@ -9,6 +8,8 @@
 #include <signal.h>
 #include <sys/types.h>
 #include <unistd.h>
+
+#include "utils.h"
 
 typedef void (*sighandler_t)(int);
 
@@ -40,7 +41,7 @@ int sdup2(int oldfd, int newfd);
 pid_t swaitpid(pid_t pid, int *wstatus, int options);
 
 /* execve() wrapper */
-void sexecve(const char *pathname, char *const argv[], char *const envp[]);
+NORETURN void sexecve(const char *pathname, char *const argv[], char *const envp[]);
 
 /* lseek() wrapper */
 off_t slseek(int fd, off_t offset, int whence);
@@ -57,5 +58,7 @@ int sftruncate(int fd, off_t length);
 /* read() wrapper */
 ssize_t sread(int fd, void *buf, size_t count);
 
-#endif /* _SAFE_H_ */
+/* pipe() wrapper */
+int spipe(int pipefd[2]);
 
+#endif /* _SAFE_H_ */

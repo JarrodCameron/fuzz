@@ -24,6 +24,7 @@
 #include "fuzzer.h"
 #include "fuzz_csv.h"
 #include "fuzz_json.h"
+#include "fs.h"
 
 /* Helper Functions */
 static void fuzz_handle_dummy(struct state *);
@@ -77,53 +78,32 @@ init_state(const char *data, const char *bin, char **envp)
 	sclose(fd);
 
 	system_state.payload_fd = sopen(TESTDATA_FILE, O_RDWR | O_CREAT, 0644);
+
+	fs_init(&system_state);
 }
 
 void
 deploy(void)
 {
+	int wstatus;
+
 	system_state.deploys += 1;
-	int fd, wstatus;
 
-	char *const argv[] = {
-		(char *) system_state.binary,
-		NULL
-	};
+	/* Tell the fork server to run */
+	swrite(CMD_FD, CMD_RUN, sizeof(CMD_RUN)-1);
 
-	pid_t pid = sfork();
+	/* Get the result of waitpid() from the fork server */
+	sread(INFO_FD, &wstatus, sizeof(wstatus));
 
-	switch (pid) {
-	case 0: /* Child */
+	if (WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV) {
 
-		fd = sopen(TESTDATA_FILE, O_RDONLY);
+		/* Signal that we are done */
+		swrite(CMD_FD, CMD_QUIT, sizeof(CMD_QUIT)-1);
 
-		/* Overwrite stdin in the child process */
-		sdup2(fd, 0);
-
-		/* won't need this anymore */
-		sclose(fd);
-
-		sexecve(
-			system_state.binary,
-			argv,
-			system_state.envp
-		);
-
-		break;
-
-	default: /* Parent */
-
-		swaitpid(pid, &wstatus, 0);
-
-		if (WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV) {
-			printf("$$$ SIGSEGV $$$\n");
-			srename(TESTDATA_FILE, BAD_FILE);
-			exit(0);
-		}
-
-		break;
+		printf("$$$ SIGSEGV $$$\n");
+		srename(TESTDATA_FILE, BAD_FILE);
+		exit(0);
 	}
-
 }
 
 /* This function is a place holder, just an example of an example fuzzer
