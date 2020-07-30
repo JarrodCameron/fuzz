@@ -30,9 +30,11 @@
 static void fuzz_handle_dummy(struct state *);
 static void sig_handler(UNUSED int sig);
 static void init_state(const char *data, const char *bin, char **envp);
+static void exit_fuzzer(void);
 
 static struct state system_state = {0};
 
+/* Called once and once only */
 static void (*fuzz_handles[])(struct state *) = {
 	[file_type_csv] = fuzz_handle_csv,
 	[file_type_json] = fuzz_handle_json,
@@ -41,13 +43,20 @@ static void (*fuzz_handles[])(struct state *) = {
 	[file_type_dummy] = fuzz_handle_dummy,
 };
 
+/* Called when the program is done, helps with checking for memory leaks */
+static void (*free_handles[])(struct state *) = {
+	[file_type_csv] = NULL,
+	[file_type_json] = free_handle_json,
+	[file_type_plain] = NULL,
+	[file_type_xml] = NULL,
+	[file_type_dummy] = NULL,
+};
+
 static
 void
 sig_handler(UNUSED int sig)
 {
-	printf("Exiting: cya later\n");
-	printf("# deploys: %lu\n", system_state.deploys);
-	exit(0);
+	exit_fuzzer();
 }
 
 static
@@ -95,16 +104,30 @@ deploy(void)
 	/* Get the result of waitpid() from the fork server */
 	sread(INFO_FD, &wstatus, sizeof(wstatus));
 
-	if (WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV) {
-
-		/* Signal that we are done */
-		swrite(CMD_FD, CMD_QUIT, sizeof(CMD_QUIT)-1);
-
-		printf("$$$ SIGSEGV $$$\n");
-		srename(TESTDATA_FILE, BAD_FILE);
-		exit(0);
-	}
+	if (WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV)
+		exit_fuzzer();
 }
+
+NORETURN
+static
+void
+exit_fuzzer(void)
+{
+	if (free_handles[system_state.ft] != NULL)
+		free_handles[system_state.ft](&system_state);
+
+	/* Signal that we are done */
+	swrite(CMD_FD, CMD_QUIT, sizeof(CMD_QUIT)-1);
+
+	printf("$$$ SIGSEGV $$$\n");
+	srename(TESTDATA_FILE, BAD_FILE);
+
+	printf("Exiting: cya later\n");
+	printf("# deploys: %lu\n", system_state.deploys);
+
+	exit(0);
+}
+
 
 /* This function is a place holder, just an example of an example fuzzer
  * for a program i made up */

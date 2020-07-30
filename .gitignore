@@ -10,3 +10,4 @@ fuzzer
 *.o
 *.a
 *.so
+vgcore.*

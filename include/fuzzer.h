@@ -1,8 +1,6 @@
 #ifndef _FUZZER_H_
 #define _FUZZER_H_
 
-void deploy(void);
-
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>

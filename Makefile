@@ -17,7 +17,7 @@ all: $(BUILDDIR) $(SHARED) $(BINS)
 
 fuzzer: $(addprefix $(BUILDDIR)/, $(OBJS))
 	make -C libs
-	$(CC) -static -o fuzzer $^ -Llibs -lcsv -ljsonparser -lm
+	$(CC) -o fuzzer $^ -Llibs -lcsv -ljsonparser -lm
 	@echo ':)'
 
 $(SHARED): shared/shared.c

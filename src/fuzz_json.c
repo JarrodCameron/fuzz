@@ -65,6 +65,13 @@ fuzz_handle_json(struct state *state)
 	fuzz(state);
 }
 
+void
+free_handle_json(UNUSED struct state *state)
+{
+	free(json.mem);
+	json_value_free(json.jv);
+}
+
 /* Does the actual fuzzing */
 static
 void

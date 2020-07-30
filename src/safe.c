@@ -172,3 +172,12 @@ spipe(int pipefd[2])
 		panic("Error: pipe[%d, %d]\n", pipefd[0], pipefd[1]);
 	return ret;
 }
+
+FILE *
+sfopen(const char *pathname, const char *mode)
+{
+	FILE *ret = fopen(pathname, mode);
+	if (ret == NULL)
+		panic("Error: fopen(\"%s\", \"%s\")\n", pathname, mode);
+	return ret;
+}
