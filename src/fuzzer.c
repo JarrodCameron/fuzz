@@ -31,9 +31,7 @@
 static void fuzz_handle_dummy(struct state *);
 static void sig_handler(UNUSED int sig);
 static void init_state(const char *data, const char *bin, char **envp);
-static void exit_fuzzer(void);
 static int open_tmp_file(char **fname);
-static void move_file(const char *oldpath, const char *newpath);
 
 static struct state system_state = {0};
 
@@ -98,57 +96,7 @@ init_state(const char *data, const char *bin, char **envp)
 	fs_init(&system_state);
 }
 
-static
-int
-open_tmp_file(char **fname)
-{
-	*fname = sstrdup(TESTDATA_FILE);
-	return smkstemp(*fname);
-}
-
-void
-deploy(void)
-{
-	int wstatus;
-
-	system_state.deploys += 1;
-
-	/* Tell the fork server to run */
-	swrite(CMD_FD, CMD_RUN, sizeof(CMD_RUN)-1);
-
-	/* Get the result of waitpid() from the fork server */
-	sread(INFO_FD, &wstatus, sizeof(wstatus));
-
-	if (WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV) {
-
-		printf("$$$ SIGSEGV $$$\n");
-		move_file(system_state.payload_fname, BAD_FILE);
-
-		exit_fuzzer();
-	}
-}
-
-static
-void
-move_file(const char *oldpath, const char *newpath)
-{
-	char buf[4096];
-	int oldfd = sopen(oldpath, O_RDONLY);
-	int newfd = sopen(newpath, O_WRONLY | O_CREAT);
-
-	ssize_t ret;
-
-	while ((ret = sread(oldfd, buf, ARRSIZE(buf))) > 0)
-		/* we should loop here for parial writes but ain't nobody got time
-		 * for that */
-		swrite(newfd, buf, ret);
-
-	close(oldfd);
-	close(newfd);
-}
-
 NORETURN
-static
 void
 exit_fuzzer(void)
 {
@@ -160,12 +108,16 @@ exit_fuzzer(void)
 
 	free(system_state.payload_fname);
 
-	printf("Exiting: cya later\n");
-	printf("# deploys: %lu\n", system_state.deploys);
-
 	exit(0);
 }
 
+static
+int
+open_tmp_file(char **fname)
+{
+	*fname = sstrdup(TESTDATA_FILE);
+	return smkstemp(*fname);
+}
 
 /* This function is a place holder, just an example of an example fuzzer
  * for a program i made up */
@@ -183,7 +135,6 @@ fuzz_handle_dummy(UNUSED struct state *s)
 int
 main(int argc, char **argv, char **envp)
 {
-
 	if (argc != 3) {
 		fprintf(stderr, "Usage: %s /path/to/data /path/to/bin\n", argv[0]);
 		exit(1);

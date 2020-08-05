@@ -1,4 +1,5 @@
 #include <assert.h>
+#include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
@@ -11,6 +12,7 @@
 
 /* Helper functions */
 static int run(void);
+static void run_test(void);
 
 __attribute__ ((constructor))
 void
@@ -18,8 +20,6 @@ shared(void)
 {
 	char cmd;
 	int ret;
-
-	printf("Ooooh we are inside the target\n");
 
 	while (1) {
 
@@ -35,12 +35,31 @@ shared(void)
 		case 'Q': /* quit */
 			exit(0);
 
+		case 'T': /* test */
+			run_test();
+			break;
+
 		default:
 			fprintf(stderr, "Unkown command: `%c` (%#hhx)", cmd, cmd);
 			exit(1);
 		}
 
 	}
+}
+
+static
+void
+run_test(void)
+{
+	char buf[4] = {0};
+	ssize_t ret;
+
+	ret = read(CMD_FD, buf, 3);
+	assert(ret == 3);
+	assert(strcmp(buf, "SYN") == 0);
+
+	ret = write(INFO_FD, "ACK", 3);
+	assert(ret == 3);
 }
 
 static

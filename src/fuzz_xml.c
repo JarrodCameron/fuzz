@@ -8,9 +8,10 @@
 #include <libxml/xmlsave.h>
 #include <libxml/parser.h>
 
+#include "fs.h"
 #include "fuzz_xml.h"
-#include "utils.h"
 #include "safe.h"
+#include "utils.h"
 
 /* Cast string to a "const xmlChar *" */
 #define TOXMLCHAR(S) ((const unsigned char *) S)

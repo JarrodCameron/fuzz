@@ -5,12 +5,13 @@
 #include <string.h>
 #include <sys/mman.h>
 
+#include "fs.h"
 #include "fuzzer.h"
+#include "json-builder.h"
+#include "json.h"
+#include "mutation_functions.h"
 #include "safe.h"
 #include "utils.h"
-#include "json.h"
-#include "json-builder.h"
-#include "mutation_functions.h"
 
 static struct {
 

@@ -128,15 +128,6 @@ slseek(int fd, off_t offset, int whence)
 	return ret;
 }
 
-int
-srename(const char *oldpath, const char *newpath)
-{
-	int ret = rename(oldpath, newpath);
-	if (ret < 0)
-		panic("Error: rename(\"%s\", \"%s\")\n", oldpath, newpath);
-	return ret;
-}
-
 void *
 smalloc(size_t size)
 {

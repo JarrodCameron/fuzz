@@ -13,6 +13,7 @@
 /* Commands for the fork server */
 #define CMD_RUN  "R"
 #define CMD_QUIT "Q"
+#define CMD_TEST "T"
 
 #define TRUE 1
 #define FALSE 0

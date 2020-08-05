@@ -49,9 +49,6 @@ NORETURN void sexecve(const char *pathname, char *const argv[], char *const envp
 /* lseek() wrapper */
 off_t slseek(int fd, off_t offset, int whence);
 
-/* rename() wrapper */
-int srename(const char *oldpath, const char *newpath);
-
 /* malloc() wrapper */
 void *smalloc(size_t size);
 

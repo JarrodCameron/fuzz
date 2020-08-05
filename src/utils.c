@@ -1,7 +1,11 @@
+#include <fcntl.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 
+#include "safe.h"
 #include "utils.h"
 
 /* Helper Functions */
@@ -61,6 +65,24 @@ arr_len(const void **arr)
 	while(arr[i])
 		i++;
 	return i;
+}
+
+void
+move_file(const char *oldpath, const char *newpath)
+{
+	char buf[4096];
+	int oldfd = sopen(oldpath, O_RDONLY);
+	int newfd = sopen(newpath, O_WRONLY | O_CREAT, 0644);
+
+	ssize_t ret;
+
+	while ((ret = sread(oldfd, buf, ARRSIZE(buf))) > 0)
+		/* we should loop here for parial writes but ain't nobody got time
+		 * for that */
+		swrite(newfd, buf, ret);
+
+	sclose(oldfd);
+	sclose(newfd);
 }
 
 static
