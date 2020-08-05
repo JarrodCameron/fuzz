@@ -4,8 +4,7 @@
 /* Here lies random config data, changing these value(s) SHOULD not stuff up
  * the program */
 
-/* TODO This should be a file in /tmp */
-#define TESTDATA_FILE "testdata.bin"
+#define TESTDATA_FILE "/tmp/testdata.bin-XXXXXX"
 
 /* File descriptors for the fuzzer to read/write to/from the fork server */
 #define CMD_FD           198

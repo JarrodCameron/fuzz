@@ -98,7 +98,7 @@ spawn_target(struct state *s)
 	new_env[1] = "LD_BIND_NOW=1";
 
 	/* Overwrite standard input with our input file */
-	int fd = sopen(TESTDATA_FILE, O_RDONLY);
+	int fd = sopen(s->payload_fname, O_RDONLY);
 	sdup2(fd, 0);
 	sclose(fd);
 

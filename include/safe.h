@@ -67,4 +67,13 @@ int spipe(int pipefd[2]);
 /* fopen() wrapper */
 FILE *sfopen(const char *pathname, const char *mode);
 
+/* unlink() wrapper */
+int sunlink(const char *pathname);
+
+/* strdup() wrapper */
+char *sstrdup(const char *s);
+
+/* mkstemp() wrapper */
+int smkstemp(char *template);
+
 #endif /* _SAFE_H_ */

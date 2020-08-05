@@ -32,6 +32,8 @@ static void fuzz_handle_dummy(struct state *);
 static void sig_handler(UNUSED int sig);
 static void init_state(const char *data, const char *bin, char **envp);
 static void exit_fuzzer(void);
+static int open_tmp_file(char **fname);
+static void move_file(const char *oldpath, const char *newpath);
 
 static struct state system_state = {0};
 
@@ -57,6 +59,9 @@ static
 void
 sig_handler(UNUSED int sig)
 {
+	/* We won't need this file anymore */
+	sunlink(system_state.payload_fname);
+
 	exit_fuzzer();
 }
 
@@ -64,6 +69,7 @@ static
 void
 init_state(const char *data, const char *bin, char **envp)
 {
+
 	system_state.input_file = data;
 	system_state.binary = bin;
 	system_state.envp = envp;
@@ -87,9 +93,17 @@ init_state(const char *data, const char *bin, char **envp)
 
 	sclose(fd);
 
-	system_state.payload_fd = sopen(TESTDATA_FILE, O_RDWR | O_CREAT, 0644);
+	system_state.payload_fd = open_tmp_file(&system_state.payload_fname);
 
 	fs_init(&system_state);
+}
+
+static
+int
+open_tmp_file(char **fname)
+{
+	*fname = sstrdup(TESTDATA_FILE);
+	return smkstemp(*fname);
 }
 
 void
@@ -105,8 +119,32 @@ deploy(void)
 	/* Get the result of waitpid() from the fork server */
 	sread(INFO_FD, &wstatus, sizeof(wstatus));
 
-	if (WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV)
+	if (WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV) {
+
+		printf("$$$ SIGSEGV $$$\n");
+		move_file(system_state.payload_fname, BAD_FILE);
+
 		exit_fuzzer();
+	}
+}
+
+static
+void
+move_file(const char *oldpath, const char *newpath)
+{
+	char buf[4096];
+	int oldfd = sopen(oldpath, O_RDONLY);
+	int newfd = sopen(newpath, O_WRONLY | O_CREAT);
+
+	ssize_t ret;
+
+	while ((ret = sread(oldfd, buf, ARRSIZE(buf))) > 0)
+		/* we should loop here for parial writes but ain't nobody got time
+		 * for that */
+		swrite(newfd, buf, ret);
+
+	close(oldfd);
+	close(newfd);
 }
 
 NORETURN
@@ -120,8 +158,7 @@ exit_fuzzer(void)
 	/* Signal that we are done */
 	swrite(CMD_FD, CMD_QUIT, sizeof(CMD_QUIT)-1);
 
-	printf("$$$ SIGSEGV $$$\n");
-	srename(TESTDATA_FILE, BAD_FILE);
+	free(system_state.payload_fname);
 
 	printf("Exiting: cya later\n");
 	printf("# deploys: %lu\n", system_state.deploys);
@@ -160,9 +197,6 @@ main(int argc, char **argv, char **envp)
 
 	fuzz_handles[system_state.ft](&system_state);
 
-	if (free_handles[system_state.ft])
-		free_handles[system_state.ft](&system_state);
-
-	return 0;
+	exit_fuzzer();
 }
 

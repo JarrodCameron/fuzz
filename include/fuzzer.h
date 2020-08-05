@@ -23,6 +23,9 @@ struct state {
 	 * This saves use from opening/closing the file all the time. */
 	int payload_fd;
 
+	/* Name of the file, this is only used to prevent leaks */
+	char *payload_fname;
+
 	enum file_type ft;
 };
 
