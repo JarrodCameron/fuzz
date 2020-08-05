@@ -33,5 +33,7 @@ if [ -n "$1" ]; then
 	esac
 fi
 
+clear
+
 $cmd ./fuzzer examples/"$f".txt examples/"$f"
 

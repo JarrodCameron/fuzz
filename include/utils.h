@@ -28,6 +28,9 @@
 #define MIN(A,B) ((A<B)?(A):(B))
 #define MAX(A,B) ((A>B)?(A):(B))
 
+/* Since I'm too lazy to open gdb... */
+#define check() printf("Here -> %d (%s)\n", __LINE__, __FUNCTION__)
+
 /* Yanked these bad boys from:
  *     https://github.com/google/AFL/blob/master/config.h#L227
  */

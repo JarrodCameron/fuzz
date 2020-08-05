@@ -24,6 +24,7 @@
 #include "fuzzer.h"
 #include "fuzz_csv.h"
 #include "fuzz_json.h"
+#include "fuzz_xml.h"
 #include "fs.h"
 
 /* Helper Functions */
@@ -39,7 +40,7 @@ static void (*fuzz_handles[])(struct state *) = {
 	[file_type_csv] = fuzz_handle_csv,
 	[file_type_json] = fuzz_handle_json,
 	[file_type_plain] = NULL,
-	[file_type_xml] = NULL,
+	[file_type_xml] = fuzz_handle_xml,
 	[file_type_dummy] = fuzz_handle_dummy,
 };
 
@@ -48,7 +49,7 @@ static void (*free_handles[])(struct state *) = {
 	[file_type_csv] = NULL,
 	[file_type_json] = free_handle_json,
 	[file_type_plain] = NULL,
-	[file_type_xml] = NULL,
+	[file_type_xml] = free_handle_xml,
 	[file_type_dummy] = NULL,
 };
 
