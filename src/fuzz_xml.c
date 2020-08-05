@@ -73,10 +73,11 @@ fuzz_handle_xml(struct state *state)
 void
 free_handle_xml(UNUSED struct state *state)
 {
-	/* TODO Check these return values */
 	xmlFreeDoc(xml.doc);
 	xmlCleanupParser();
-	xmlSaveClose(xml.ctx);
+
+	if (xmlSaveClose(xml.ctx) == -1)
+		panic("Error: xmlSaveClose(%p)\n", xml.ctx);
 }
 
 /* Does the $$$ */

@@ -160,6 +160,9 @@ main(int argc, char **argv, char **envp)
 
 	fuzz_handles[system_state.ft](&system_state);
 
+	if (free_handles[system_state.ft])
+		free_handles[system_state.ft](&system_state);
+
 	return 0;
 }
 

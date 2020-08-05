@@ -68,7 +68,7 @@ sometime in the future we'll add a proper `init` system to deal with this).
 Calling `fread_csv_line` on `fp` after a previous call exhausted the file
 (indicated by `*done`) is undefined behavior.
 
-## TODO
+## todo
 
 In `split.c` and `fread_csv_line.c`:  Deal with carriage returns when
 "linebreak" doesn't mean "\n"

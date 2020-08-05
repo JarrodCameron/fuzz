@@ -15,8 +15,6 @@ char **split_on_unescaped_newlines(const char *txt, uint64_t size) {
     char **buf, **bptr;
     int fQuote, nLines;
 
-	/* TODO This does not handle null chars */
-
     /* First pass: count how many lines we will need */
     for ( nLines = 1, ptr = txt, fQuote = 0; *ptr; ptr++ ) {
         if ( fQuote ) {
