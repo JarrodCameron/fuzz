@@ -86,8 +86,6 @@ void
 deploy(void)
 {
 	int wstatus;
-	int temp; //Acts as a pause between interactions to check to see if testbin has been deployed correctly
-	scanf("%d", &temp);
 	system_state.deploys += 1;
 
 	/* Tell the fork server to run */
@@ -135,7 +133,7 @@ main(int argc, char **argv, char **envp)
 
 	system_state.ft = detect_file(system_state.input_file);
 
-	
+
 	fuzz_handles[system_state.ft](&system_state);
 
 	return 0;

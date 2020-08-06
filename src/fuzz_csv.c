@@ -72,18 +72,15 @@ static void dump_csv(struct state *s);
 static void fuzz_populate(struct state *s);
 static off_t dump_row(int fd, struct row *row);
 static void revert_csv_data_structures(void);
-
-/* functions for testing */
-static void fuzz_test(struct state *s);
 static void insert_value(uint32_t row, uint32_t col, char* value); 
+
 
 /* Here we add functions used for fuzzing.
  * Each function tests for something different. */
 static void (*fuzz_payloads[])(struct state *) = {
-	// fuzz_bad_nums,
-	// fuzz_buffer_overflow,
-	// fuzz_populate,
-	fuzz_test,
+	fuzz_bad_nums,
+	fuzz_buffer_overflow,
+	fuzz_populate,
 };
 
 void
@@ -112,8 +109,6 @@ fuzz_handle_csv(struct state *state)
 	prev_row->next = NULL;
 	free(curr_row);
 
-
-
 	free(rows);
 
 	fuzz(state);
@@ -124,76 +119,13 @@ static
 void
 fuzz(struct state *s)
 {
-
-
-	// while (1) {
+	while (1) {
 		uint32_t idx = roll_dice(0, ARRSIZE(fuzz_payloads)-1);
-		printf("Fuzzing payload num: %d\n", idx);
 		fuzz_payloads[idx](s);
-	// }
+	}
 }
 
-/* delete me if Brendan does a dirty and commits this to master */
-static
-void
-fuzz_test(struct state *s)
-{
-	printf("This is my fuzz test function:\n");
-	//Test adding and then reverting a value
-	// struct value* new_value = smalloc(sizeof(struct value));
-	// new_value->val = strdup("BBBB");
-	// new_value->len = 5;
-	// new_value->added_val = TRUE;
-	// new_value->previous = NULL;
 
-	// new_value->next = csv.rows->vals;
-	// csv.rows->vals->previous = new_value;
-
-	// csv.rows->vals = new_value;
-
-	// struct row* curr_row = csv.rows;
-
-	// int i = 0;
-	// while (curr_row != NULL && i < 2) {
-
-	// 	curr_row = curr_row->next;
-	// 	i++;
-	// }
-
-	// struct value * curr_val = curr_row->vals;
-	// i=0;
-	// while (curr_val != NULL && i < 2) {
-
-	// 	curr_val = curr_val->next;
-	// 	i++;
-	// }
-
-	
-	// new_value->next = curr_val;
-	// new_value->previous = curr_val->previous;
-	// curr_val->previous->next = new_value;
-	// curr_val->previous = new_value;
-
-
-	// insert_value(2,4, "BBBB");
-
-	// insert_value(0,0, "CCCC");
-
-	insert_value(4,0, "DDDD");
-
-
-	printf("About to dump_csv\n");
-	dump_csv(s);
-	printf("Dumped csv\n");
-	printf("Print function check point\n");
-	deploy();
-
-	revert_csv_data_structures();
-	dump_csv(s);
-	deploy();
-
-	exit(0);
-}
 
 static
 void
@@ -304,7 +236,6 @@ insert_value(uint32_t row, uint32_t col, char* value) {
 
 
 	struct row * curr_row = csv.rows;
-	printf("Adding a valiue at %d,%d\n", row, col);
 
 	//Add something into a new row at the end
 	if(row == csv.nrows) {
@@ -429,9 +360,7 @@ static
 void
 fuzz_bad_nums(struct state *s)
 {
-	// uint64_t row, val;
 
-	printf("fuzz_bad_nums\n");
 	struct row * curr_row = csv.rows;
 	while (curr_row != NULL) {
 		struct value * curr_val = curr_row->vals;
@@ -442,8 +371,6 @@ fuzz_bad_nums(struct state *s)
 
 		curr_row = curr_row->next;
 	}
-
-	printf("Finished fuzz_bad_nums\n");
 }
 
 static
@@ -452,7 +379,6 @@ fuzz_buffer_overflow(struct state *s)
 {
 
 
-	printf("fuzz_buffer_overflow\n");
 	struct row * curr_row = csv.rows;
 	while (curr_row != NULL) {
 		struct value * curr_val = curr_row->vals;
@@ -470,7 +396,6 @@ void
 try_bad_nums(struct value* value_to_fuzz, struct state *s)
 {
 
-	printf("try_bad_nums\n");
 
 	char *old_val = value_to_fuzz->val;
 	uint64_t old_len = value_to_fuzz->len;
@@ -478,17 +403,13 @@ try_bad_nums(struct value* value_to_fuzz, struct state *s)
 	for (uint64_t i = 0; i < ARRSIZE(bad_nums); i++) {
 		value_to_fuzz->val =  strdup(bad_nums[i].s);
 		value_to_fuzz->len = strlen(bad_nums[i].s);
-		printf("About ot dump_csv\n");
 		dump_csv(s);
-		printf("Dumped csv\n");
-		printf("i = %d\n",i);
 		deploy();
 	}
 
-	revert_csv_data_structures();
 
-	// value_to_fuzz->val = old_val;
-	// value_to_fuzz->len = old_len;
+	value_to_fuzz->val = old_val;
+	value_to_fuzz->len = old_len;
 
 }
 
@@ -505,8 +426,6 @@ dump_csv(struct state *s)
 	while(curr_row != NULL) {
 		struct value * curr_val = curr_row->vals;
 		while(curr_val != NULL) {
-			// printf("writing:\n fd=%d, curr_val->val = %s, curr_val->len = %d \n", s->payload_fd, curr_val->val, curr_val->len);
-			printf("writing:\n fd=%d, curr_val->val = %s\n", s->payload_fd, curr_val->val);
 			len += swrite (
 				s->payload_fd,
 				curr_val->val,
