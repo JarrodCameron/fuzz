@@ -8,6 +8,7 @@ set -e
 
 # TODO Check this on an ubuntu box
 sudo apt-get install -y libxml2
+sudo apt-get install -y libxml2-dev
 
 make shared
 
