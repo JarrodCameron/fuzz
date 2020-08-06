@@ -73,15 +73,18 @@ static void dump_csv(struct state *s);
 static void fuzz_populate(struct state *s);
 static off_t dump_row(int fd, struct row *row);
 static void revert_csv_data_structures(void);
-static void insert_value(uint32_t row, uint32_t col, char* value); 
+static void insert_value(uint32_t row, uint32_t col, char* value);
+static void try_special_chars(struct value* value_to_fuzz, struct state *s);
+static void fuzz_special_chars(struct state *s);
 
 
 /* Here we add functions used for fuzzing.
  * Each function tests for something different. */
 static void (*fuzz_payloads[])(struct state *) = {
-	fuzz_bad_nums,
-	fuzz_buffer_overflow,
-	fuzz_populate,
+	fuzz_special_chars,
+	// fuzz_bad_nums,
+	// fuzz_buffer_overflow,
+	// fuzz_populate,
 };
 
 void
@@ -120,10 +123,10 @@ static
 void
 fuzz(struct state *s)
 {
-	while (1) {
+	// while (1) {
 		uint32_t idx = roll_dice(0, ARRSIZE(fuzz_payloads)-1);
 		fuzz_payloads[idx](s);
-	}
+	// }
 }
 
 
@@ -391,6 +394,67 @@ fuzz_buffer_overflow(struct state *s)
 		curr_row = curr_row->next;
 	}
 }
+
+
+
+
+
+
+/* Will try to fuzz characters if they are implemented into formulas or 
+some form of active code 
+https://payatu.com/csv-injection-basic-to-exploit
+*/
+static
+void
+fuzz_special_chars(struct state *s) {
+
+	struct row * curr_row = csv.rows;
+	while (curr_row != NULL) {
+		struct value * curr_val = curr_row->vals;
+		while(curr_val != NULL) {
+			try_special_chars(curr_val, s);
+			curr_val = curr_val->next;
+		}
+
+		curr_row = curr_row->next;
+	}
+
+
+}
+
+static
+void
+try_special_chars(struct value* value_to_fuzz, struct state *s) {
+	
+
+	char formula_case[] = "=A1+A2";
+	char formula_case2[] = "=Z0+A200";
+	char formula_case3[] = "=A-1+22";
+	char formula_case4[] = "=#$%^";
+	char formula_case5[] = "=";
+	char hyperlink_case[] = "HYPERLINK(plsdonthaq.me, [friendly_name])";
+	char hyperlink_case2[] = "HYPERLINK(, [])";
+	char command_inject_example[] = "cmd|' /C notepad'!'A1'";
+	char funny_csv_char[] = "+-@&;";
+	char *cases[] = {formula_case, formula_case2, formula_case3, formula_case4, formula_case5, hyperlink_case, hyperlink_case2, command_inject_example, funny_csv_char};
+	
+
+	char *old_val = value_to_fuzz->val;
+	uint64_t old_len = value_to_fuzz->len;
+
+	for (uint64_t i = 0; i < ARRSIZE(cases); i++) {
+		value_to_fuzz->val =  strdup(cases[i]);
+		value_to_fuzz->len = strlen(cases[i]);
+		dump_csv(s);
+		deploy();
+	}
+
+
+	value_to_fuzz->val = old_val;
+	value_to_fuzz->len = old_len;
+}
+
+
 
 static
 void
