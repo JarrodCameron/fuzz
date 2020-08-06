@@ -70,22 +70,30 @@ static void fuzz(struct state *s);
 static void try_bad_nums(struct value * value_to_fuzz, struct state *s);
 static void fuzz_bad_nums(struct state *s);
 static void dump_csv(struct state *s);
-static void fuzz_populate(struct state *s);
+static void fuzz_populate_length(struct state *s);
 static off_t dump_row(int fd, struct row *row);
 static void revert_csv_data_structures(void);
 static void insert_value(uint32_t row, uint32_t col, char* value);
 static void try_special_chars(struct value* value_to_fuzz, struct state *s);
 static void fuzz_special_chars(struct state *s);
+static void fuzz_populate_width(struct state *s);
 
 
-/* Here we add functions used for fuzzing.
- * Each function tests for something different. */
-static void (*fuzz_payloads[])(struct state *) = {
-	fuzz_special_chars,
-	// fuzz_bad_nums,
-	// fuzz_buffer_overflow,
-	// fuzz_populate,
+/* Here are the functions that can be run multiple times and
+   do different things each time. */
+static void (*fuzz_payloads_repeat[])(struct state *) = {
+	fuzz_populate_width,
+	fuzz_populate_length,
 };
+
+/* Here are the functions that should be only run once */
+static void (*fuzz_payloads_single[])(struct state *) = {
+	fuzz_special_chars,
+	fuzz_bad_nums,
+	fuzz_buffer_overflow,
+};
+
+
 
 void
 fuzz_handle_csv(struct state *state)
@@ -123,10 +131,17 @@ static
 void
 fuzz(struct state *s)
 {
-	// while (1) {
-		uint32_t idx = roll_dice(0, ARRSIZE(fuzz_payloads)-1);
-		fuzz_payloads[idx](s);
-	// }
+
+	int i = 0;
+	while(i < ARRSIZE(fuzz_payloads_single)) {
+		fuzz_payloads_single[i](s);
+		i++;
+	}
+
+	while (1) {
+		uint32_t idx = roll_dice(0, ARRSIZE(fuzz_payloads_repeat)-1);
+		fuzz_payloads_repeat[idx](s);
+	}
 }
 
 
@@ -301,14 +316,71 @@ insert_value(uint32_t row, uint32_t col, char* value) {
 
 }
 
+/* For each row in the csv, flip a bias coin to see if we should
+ * print it or not */
+static
+void
+fuzz_populate_width(struct state *s)
+{
+	printf("Started fuzz_populate_width\n");
+	uint64_t len = 0;
 
+	slseek(s->payload_fd, 0, SEEK_SET);
+
+	struct row * curr_row = csv.rows;
+
+	while(curr_row != NULL) {
+
+		// len += dump_row(s->payload_fd, curr_row);
+		struct value * curr_value = curr_row->vals;
+		while(curr_value != NULL) {
+
+
+			len += swrite(
+				s->payload_fd,
+				curr_value->val,
+				curr_value->len
+			   );
+
+			/* Seperate each element by a "," unless it is the last element in
+			 * a row, then seperate with a "\n" */
+			if (curr_value->next == NULL){
+				//We have reached the end of the row
+				if (coin_flip(90)) {
+					//We will go back to the start of this row and add more to it
+					curr_value = curr_row->vals;
+					len += swrite(s->payload_fd, ",", 1);
+				}
+				else {
+					//we will finish this row here
+					len += swrite(s->payload_fd, "\n", 1);
+				}
+			}
+			else {
+				len += swrite(s->payload_fd, ",", 1);
+			}
+
+			curr_value = curr_value->next;
+		}
+
+		curr_row = curr_row->next;
+
+	}
+
+	sftruncate(s->payload_fd, len);
+	printf("Ended fuzz_populate_width\n");
+	// fgetc(stdin);
+	deploy();
+}
 
 /* For each row in the csv, flip a bias coin to see if we should
  * print it or not */
 static
 void
-fuzz_populate(struct state *s)
+fuzz_populate_length(struct state *s)
 {
+
+	printf("Started fuzz_populate_length\n");
 	uint64_t len = 0;
 
 	slseek(s->payload_fd, 0, SEEK_SET);
@@ -326,6 +398,7 @@ fuzz_populate(struct state *s)
 	}
 
 	sftruncate(s->payload_fd, len);
+	printf("Ended fuzz_populate_length\n");
 	deploy();
 }
 
@@ -396,10 +469,6 @@ fuzz_buffer_overflow(struct state *s)
 }
 
 
-
-
-
-
 /* Will try to fuzz characters if they are implemented into formulas or 
 some form of active code 
 https://payatu.com/csv-injection-basic-to-exploit
@@ -426,7 +495,7 @@ static
 void
 try_special_chars(struct value* value_to_fuzz, struct state *s) {
 	
-
+	//CSV unique strings pulled with inspiration from https://payatu.com/csv-injection-basic-to-exploit
 	char formula_case[] = "=A1+A2";
 	char formula_case2[] = "=Z0+A200";
 	char formula_case3[] = "=A-1+22";
@@ -438,7 +507,6 @@ try_special_chars(struct value* value_to_fuzz, struct state *s) {
 	char funny_csv_char[] = "+-@&;";
 	char *cases[] = {formula_case, formula_case2, formula_case3, formula_case4, formula_case5, hyperlink_case, hyperlink_case2, command_inject_example, funny_csv_char};
 	
-
 	char *old_val = value_to_fuzz->val;
 	uint64_t old_len = value_to_fuzz->len;
 
@@ -446,6 +514,17 @@ try_special_chars(struct value* value_to_fuzz, struct state *s) {
 		value_to_fuzz->val =  strdup(cases[i]);
 		value_to_fuzz->len = strlen(cases[i]);
 		dump_csv(s);
+		deploy();
+	}
+
+
+	//General strings from util.h
+	for (uint64_t i = 0; i < ARRSIZE(bad_strings); i++) {
+		value_to_fuzz->val = smalloc(sizeof(char)*bad_strings[i].n);
+		memcpy(value_to_fuzz->val, bad_strings[i].s, bad_strings[i].n);
+		value_to_fuzz->len = bad_strings[i].n;
+		dump_csv(s);
+		fgetc(stdin);
 		deploy();
 	}
 
@@ -472,6 +551,12 @@ try_bad_nums(struct value* value_to_fuzz, struct state *s)
 		deploy();
 	}
 
+	for (uint64_t i = 0; i < ARRSIZE(bad_nums_floats); i++) {
+		value_to_fuzz->val =  strdup(bad_nums_floats[i].s);
+		value_to_fuzz->len = strlen(bad_nums_floats[i].s);
+		dump_csv(s);
+		deploy();
+	}
 
 	value_to_fuzz->val = old_val;
 	value_to_fuzz->len = old_len;

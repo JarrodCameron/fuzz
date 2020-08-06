@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <math.h>
 
 #define BIG "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" \
             "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" \
@@ -66,6 +67,34 @@ UNUSED static struct {
 	{100663045,   "100663045"},   /* Large positive number (endian-agnostic) */
 	{2147483647,  "2147483647"},  /* Overflow signed 32-bit when incremented */
 	{1337,        "1337"},        /* Adam's buffers are always 1337 bytes    */
+};
+
+
+UNUSED static struct {
+	double n;
+	const char *s;
+} bad_nums_floats[] = {
+	{0,        "0.00000"},
+	{0,        "-0"},
+	{0,        "0"},
+	{1/3,      "0.33333333333333"},
+	{M_PI,     "3.1415927"},
+	{0.1,      "0.1"},
+	{0.1,      "0.1000000"},
+
+};
+
+
+/* These are bad strings that are NOT format strings or buffer overflow
+   mostly just general purpose control characters						*/
+UNUSED static struct {
+	int n;
+	char* s;
+} bad_strings[] = {
+	{92,       "\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA"},
+	{96,       "\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A"},
+	{70,       "\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n"},
+	{0,        ""},
 };
 
 /* List of format string which will probably segfault if victim is
