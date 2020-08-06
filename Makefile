@@ -2,23 +2,28 @@
 # Date:   10/07/20 21:12
 
 CC=gcc
-CFLAGS=-Wall -ggdb -Wextra -I$(INCDIR)
+CFLAGS=-Wall -ggdb -Wextra -I$(INCDIR) `xml2-config --cflags`
 
 INCDIR=include
 SRCDIR=src
 BUILDDIR=build
 BINS=fuzzer
 SHARED=shared32.so shared64.so
+DUMMY=$(addprefix ./dummy/,dynamic32 dynamic64 static32 static64)
+LIBS=-lcsv -ljsonparser -lm `xml2-config --libs`
 
 SRC=$(shell ls $(SRCDIR))
 OBJS=$(SRC:.c=.o)
 
-all: $(BUILDDIR) $(SHARED) $(BINS)
+all: $(DUMMY) $(BUILDDIR) $(SHARED) $(BINS)
 
 fuzzer: $(addprefix $(BUILDDIR)/, $(OBJS))
 	make -C libs
-	$(CC) -static -o fuzzer $^ -Llibs -lcsv -ljsonparser -lm
+	$(CC) -o fuzzer $^ -Llibs $(LIBS)
 	@echo ':)'
+
+$(DUMMY): dummy/dummy.c
+	make -C dummy
 
 $(SHARED): shared/shared.c
 	make -C shared $@
@@ -33,4 +38,5 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.c
 clean:
 	make -C libs clean
 	make -C shared clean
-	rm -rf $(BUILDDIR) $(BINS) testdata.bin $(SHARED)
+	make -C dummy clean
+	rm -rf $(BUILDDIR) $(BINS) $(SHARED) vgcore.* bad.txt

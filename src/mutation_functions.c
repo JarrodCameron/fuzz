@@ -17,6 +17,7 @@
 #include <limits.h>
 #include <math.h>
 
+#include "fs.h"
 #include "config.h"
 #include "fuzzer.h"
 #include "mutation_functions.h"

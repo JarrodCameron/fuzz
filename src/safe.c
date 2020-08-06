@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -127,15 +128,6 @@ slseek(int fd, off_t offset, int whence)
 	return ret;
 }
 
-int
-srename(const char *oldpath, const char *newpath)
-{
-	int ret = rename(oldpath, newpath);
-	if (ret < 0)
-		panic("Error: rename(\"%s\", \"%s\")\n", oldpath, newpath);
-	return ret;
-}
-
 void *
 smalloc(size_t size)
 {
@@ -170,5 +162,41 @@ spipe(int pipefd[2])
 	int ret = pipe(pipefd);
 	if (ret < 0)
 		panic("Error: pipe[%d, %d]\n", pipefd[0], pipefd[1]);
+	return ret;
+}
+
+FILE *
+sfopen(const char *pathname, const char *mode)
+{
+	FILE *ret = fopen(pathname, mode);
+	if (ret == NULL)
+		panic("Error: fopen(\"%s\", \"%s\")\n", pathname, mode);
+	return ret;
+}
+
+int
+sunlink(const char *pathname)
+{
+	int ret = unlink(pathname);
+	if (ret < 0)
+		panic("Error: unlink(\"%s\")\n", pathname);
+	return ret;
+}
+
+char *
+sstrdup(const char *s)
+{
+	char *ret = strdup(s);
+	if (ret == NULL)
+		panic("Error: strdup(\"%s\")\n", s);
+	return ret;
+}
+
+int
+smkstemp(char *template)
+{
+	int ret = mkstemp(template);
+	if (ret < 0)
+		panic("Error: mkstemp(\"%s\")\n", template);
 	return ret;
 }

@@ -20,5 +20,9 @@
 /* Initialise the fork server for the client */
 void fs_init(struct state *);
 
+/* A payload that has been written to the file TESTDATA_FILE will be used as
+ * input to the victim binary. If we find a bug, we do not return. */
+void deploy(void);
+
 #endif /* _FS_H_ */
 

@@ -1,13 +1,13 @@
 #ifndef _FUZZER_H_
 #define _FUZZER_H_
 
-void deploy(void);
-
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <stdint.h>
+
 #include "ftype.h"
+#include "utils.h"
 
 struct state {
 	const char *input_file;
@@ -19,19 +19,19 @@ struct state {
 
 	char *mem;
 
-	uint64_t deploys;
-
 	/* The fd for the payload file.
 	 * This saves use from opening/closing the file all the time. */
 	int payload_fd;
 
+	/* Name of the file, this is only used to prevent leaks */
+	char *payload_fname;
+
 	enum file_type ft;
 };
 
-/* A payload that has been written to the file TESTDATA_FILE will be used as
- * input to the victim binary. If we find a bug, we do not return. */
-void deploy(void);
-
+/* This function is like a C++ deconstructor, we call this when we are done
+ * with the fuzzer, whether we found a SIGSEGV or not. */
+NORETURN void exit_fuzzer(void);
 
 #endif /* _FUZZER_H_ */
 

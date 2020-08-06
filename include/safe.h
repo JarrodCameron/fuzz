@@ -4,13 +4,16 @@
 /* Here is a wrapper around pretty much every function call. If the function
  * fails then we are fucked so we might as well abort. */
 
-#include <sys/wait.h>
 #include <signal.h>
+#include <stdio.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include "utils.h"
 
+/* Forward declerations */
+struct stat;
 typedef void (*sighandler_t)(int);
 
 /* mmap() wrapper */
@@ -46,9 +49,6 @@ NORETURN void sexecve(const char *pathname, char *const argv[], char *const envp
 /* lseek() wrapper */
 off_t slseek(int fd, off_t offset, int whence);
 
-/* rename() wrapper */
-int srename(const char *oldpath, const char *newpath);
-
 /* malloc() wrapper */
 void *smalloc(size_t size);
 
@@ -60,5 +60,17 @@ ssize_t sread(int fd, void *buf, size_t count);
 
 /* pipe() wrapper */
 int spipe(int pipefd[2]);
+
+/* fopen() wrapper */
+FILE *sfopen(const char *pathname, const char *mode);
+
+/* unlink() wrapper */
+int sunlink(const char *pathname);
+
+/* strdup() wrapper */
+char *sstrdup(const char *s);
+
+/* mkstemp() wrapper */
+int smkstemp(char *template);
 
 #endif /* _SAFE_H_ */

@@ -375,7 +375,7 @@ void json_object_sort (json_value * object, json_value * proto)
    unsigned int i, out_index = 0;
 
    if (!builderize (object))
-      return;  /* TODO error */
+      return;  /* todo error */
 
    assert (object->type == json_object);
    assert (proto->type == json_object);

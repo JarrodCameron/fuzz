@@ -28,6 +28,9 @@
 #define MIN(A,B) ((A<B)?(A):(B))
 #define MAX(A,B) ((A>B)?(A):(B))
 
+/* Since I'm too lazy to open gdb... */
+#define check() printf("Here -> %d (%s)\n", __LINE__, __FUNCTION__)
+
 /* Yanked these bad boys from:
  *     https://github.com/google/AFL/blob/master/config.h#L227
  */
@@ -89,6 +92,10 @@ uint64_t arr_len(const void **arr);
 
 /* When shit hits the fan, print this string and abort() */
 NORETURN void panic(const char *fmt, ...);
+
+/* Simply move the file from one place to another, less chance of an error when
+ * compared to rename() */
+void move_file(const char *oldpath, const char *newpath);
 
 #endif /* _UTILS_H_ */
 

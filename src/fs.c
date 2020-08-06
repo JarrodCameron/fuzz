@@ -17,12 +17,22 @@ static unsigned char get_elf_class(struct state *s);
 static void **arr_join(const void **a, const void **b);
 static void parent_pipes_init(int cmd_pipe[2], int info_pipe[2]);
 static void child_pipes_init(int cmd_pipe[2], int info_pipe[2]);
+static void boring_deploy(void);
+static int fs_test(void);
+
+/* Using for overwriting the deploy function */
+static void (*deploy_hook)(void) = NULL;
+
+static struct state *system_state = NULL;
 
 void
 fs_init(struct state *s)
 {
 	int cmd_pipe[2] = {0}; /* Fuzzer reads this pipe */
 	int info_pipe[2] = {0}; /* Fuzzer writes this pipe */
+
+	/* saved for later use */
+	system_state = s;
 
 	spipe(cmd_pipe);
 	spipe(info_pipe);
@@ -36,7 +46,106 @@ fs_init(struct state *s)
 
 	default: /* parent */
 		parent_pipes_init(cmd_pipe, info_pipe);
+		if (fs_test() < 0)
+			deploy_hook = &boring_deploy;
+		break;
 	}
+}
+
+void
+deploy(void)
+{
+	int wstatus;
+
+	if (deploy_hook) {
+		deploy_hook();
+		return;
+	}
+
+	/* Tell the fork server to run */
+	swrite(CMD_FD, CMD_RUN, sizeof(CMD_RUN)-1);
+
+	/* Get the result of waitpid() from the fork server */
+	sread(INFO_FD, &wstatus, sizeof(wstatus));
+
+	if (WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV) {
+
+		printf("$$$ SIGSEGV $$$\n");
+		move_file(system_state->payload_fname, BAD_FILE);
+
+		exit_fuzzer();
+	}
+}
+
+static
+void
+boring_deploy(void)
+{
+	int wstatus, fd;
+
+	char *const argv[] = {
+		(char *) system_state->binary,
+		NULL
+	};
+
+	pid_t pid = sfork();
+
+	switch (pid) {
+	case 0: /* Child */
+
+		fd = sopen(system_state->payload_fname, O_RDONLY);
+
+		/* Overwrite stdin in the child process */
+		sdup2(fd, 0);
+
+		/* won't need this anymore */
+		sclose(fd);
+
+		sexecve(
+			system_state->binary,
+			argv,
+			system_state->envp
+		);
+
+		panic("We should never get here D:\n");
+
+	default: /* Parent */
+		swaitpid(pid, &wstatus, 0);
+
+		if (WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV) {
+
+			printf("$$$ SIGSEGV $$$\n");
+			move_file(system_state->payload_fname, BAD_FILE);
+
+			exit_fuzzer();
+		}
+		break;
+	}
+}
+
+static
+int
+fs_test (void)
+{
+	ssize_t ret;
+	char buf[4] = {0};
+
+	ret = write(CMD_FD, CMD_TEST, sizeof(CMD_TEST)-1);
+	if (ret < 0)
+		return -1;
+
+	ret = write(CMD_FD, "SYN", 3);
+	if (ret < 0)
+		return -1;
+
+	ret = read(INFO_FD, &buf, 3);
+	if (ret < 0)
+		return -1;
+
+	if (strcmp(buf, "ACK") != 0)
+		return -1;
+
+	return 0;
 }
 
 /* The child (aka the target) needs to:
@@ -98,7 +207,7 @@ spawn_target(struct state *s)
 	new_env[1] = "LD_BIND_NOW=1";
 
 	/* Overwrite standard input with our input file */
-	int fd = sopen(TESTDATA_FILE, O_RDONLY);
+	int fd = sopen(s->payload_fname, O_RDONLY);
 	sdup2(fd, 0);
 	sclose(fd);
 

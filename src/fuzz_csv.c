@@ -5,11 +5,12 @@
 
 #include "config.h"
 #include "csv.h"
+#include "fs.h"
 #include "fuzz_csv.h"
 #include "fuzzer.h"
+#include "mutation_functions.h"
 #include "safe.h"
 #include "utils.h"
-#include "mutation_functions.h"
 
 struct value {
 	uint64_t len;
