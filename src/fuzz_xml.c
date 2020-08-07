@@ -32,6 +32,8 @@ static void fuzz_buffer_overflow(struct state *s);
 static xmlNodePtr sXmlDocGetRootElement(xmlDocPtr doc);
 static const char *dbg_xmlElementType(xmlElementType type);
 static int save_doc(struct state *s);
+static void do_fuzz_tag_attrs(struct state *s, xmlNodePtr ptr);
+static void fuzz_tag_attrs(struct state *s);
 
 static struct {
 	xmlDocPtr doc;
@@ -41,7 +43,8 @@ static struct {
 /* Here we add functions used for fuzzing.
  * Each function tests for something different. */
 static void (*fuzz_payloads[])(struct state *) = {
-	fuzz_buffer_overflow,
+	fuzz_buffer_overflow, /* tags */
+	fuzz_tag_attrs,
 };
 
 void
@@ -116,6 +119,37 @@ fuzz_buffer_overflow(struct state *s)
 {
 	xmlNodePtr ptr = sXmlDocGetRootElement(xml.doc);
 	do_buffer_overflow(s, ptr);
+}
+
+static
+void
+do_fuzz_tag_attrs(struct state *s, xmlNodePtr ptr)
+{
+	xmlNode *curr;
+	xmlAttr *attr;
+
+	for (curr = ptr; curr; curr = curr->next) {
+		for (attr = curr->properties; attr; attr = attr->next) {
+			xmlChar *old = xmlGetProp(curr, attr->name);
+
+			xmlSetProp(curr, attr->name, BIG);
+			save_doc(s);
+			deploy();
+
+			xmlSetProp(curr, attr->name, old);
+
+			xmlFree(old);
+		}
+		do_fuzz_tag_attrs(s, curr->children);
+	}
+}
+
+static
+void
+fuzz_tag_attrs(struct state *s)
+{
+	xmlNodePtr ptr = sXmlDocGetRootElement(xml.doc);
+	do_fuzz_tag_attrs(s, ptr);
 }
 
 static
