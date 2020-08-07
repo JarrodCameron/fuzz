@@ -69,7 +69,7 @@ static void try_buffer_overflow(struct value * value_to_fuzz, struct state *s);
 static void fuzz(struct state *s);
 static void try_bad_nums(struct value * value_to_fuzz, struct state *s);
 static void fuzz_bad_nums(struct state *s);
-static void dump_csv(struct state *s);
+static off_t dump_csv(struct state *s);
 static void fuzz_populate_length(struct state *s);
 static off_t dump_row(int fd, struct row *row);
 static void revert_csv_data_structures(void);
@@ -77,6 +77,9 @@ static void insert_value(uint32_t row, uint32_t col, char* value);
 static void try_special_chars(struct value* value_to_fuzz, struct state *s);
 static void fuzz_special_chars(struct state *s);
 static void fuzz_populate_width(struct state *s);
+static void fuzz_empty_cells(struct state *s);
+static void fuzz_bit_shift_flip_control_char(struct state *s);
+static void fuzz_bit_shift_flip_chars(struct state *s);
 
 
 /* Here are the functions that can be run multiple times and
@@ -84,6 +87,8 @@ static void fuzz_populate_width(struct state *s);
 static void (*fuzz_payloads_repeat[])(struct state *) = {
 	fuzz_populate_width,
 	fuzz_populate_length,
+	fuzz_empty_cells,
+	fuzz_bit_shift_flip_chars,
 };
 
 /* Here are the functions that should be only run once */
@@ -91,6 +96,7 @@ static void (*fuzz_payloads_single[])(struct state *) = {
 	fuzz_special_chars,
 	fuzz_bad_nums,
 	fuzz_buffer_overflow,
+	fuzz_bit_shift_flip_control_char,
 };
 
 
@@ -156,7 +162,6 @@ revert_values_data_structure(struct row * row_to_revert) {
 			//Don't include value when reverting data strcuture
 			if (curr_val->orig_val != NULL) free(curr_val->orig_val);
 			if (curr_val->val != NULL) free(curr_val->val);
-
 			//E.g. if it is the head of the list then fix up the head of the list
 			if (curr_val == row_to_revert->vals) {
 				row_to_revert->vals = curr_val->next;
@@ -175,8 +180,6 @@ revert_values_data_structure(struct row * row_to_revert) {
 			} //Current value is at the end of the list
 			else if (curr_val->next == NULL) {
 				prev_val->next = NULL;
-				free(curr_val->val);
-				free(curr_val->orig_val);
 				free(curr_val);
 				curr_val = NULL;
 			}
@@ -185,8 +188,6 @@ revert_values_data_structure(struct row * row_to_revert) {
 				struct value * temp = curr_val;
 				curr_val = curr_val->next;
 				curr_val->previous = prev_val;
-				free(temp->val);
-				free(temp->orig_val);
 				free(temp);
 			}
 		} 
@@ -216,10 +217,10 @@ revert_csv_data_structures(void)
 	while(curr_row != NULL) {
 		if (curr_row->added_row == TRUE) {
 			//Don't include this row when reverting structure
+
 			if (curr_row->row != NULL) free(curr_row->row);
-			if (curr_row->orig_row != NULL) free(curr_row->row);
+			if (curr_row->orig_row != NULL) free(curr_row->orig_row);
 			revert_values_data_structure(curr_row);
-			prev_row = curr_row->next;
 
 			struct row * temp = curr_row;
 			curr_row = curr_row->next;
@@ -239,8 +240,86 @@ revert_csv_data_structures(void)
 		}
 
 	}
+	prev_row->next = NULL;
+
 
 }
+
+static
+void 
+insert_value_in_new_cell(uint32_t row, uint32_t col, struct value* value) {
+
+
+	uint32_t i = 0;
+
+	struct row * curr_row = csv.rows;
+
+
+	while(curr_row->next != NULL && i < row) {
+		curr_row = curr_row->next;
+		i++;
+	}
+
+	if(i != row && row != 0) {
+		//In this case we need to add more rows
+		while(i < row) {
+			curr_row->next = smalloc(sizeof(struct row));
+			curr_row->next->previous = curr_row;
+			curr_row = curr_row->next;
+			curr_row->next = NULL;
+			curr_row->row = NULL;
+			curr_row->orig_row = NULL;
+			curr_row->added_row = TRUE;
+			curr_row->nvals = 0;
+			curr_row->orig_nvals = 0;
+			i++;
+		}
+		//At this point curr_row = the row'th row
+	}
+
+
+	i = 0;
+	if(curr_row->vals == NULL) {
+		curr_row->vals = smalloc(sizeof(struct value));
+		curr_row->vals->len = col;
+		curr_row->vals->orig_len = col;
+		curr_row->vals->val = strdup("");
+		curr_row->vals->orig_val = strdup("");
+		curr_row->vals->added_val = TRUE;
+		curr_row->vals->next = NULL;
+		curr_row->vals->previous = NULL;
+
+	}
+	struct value* curr_val = curr_row->vals;
+	while(curr_val->next != NULL && i < col-1) {
+		curr_val = curr_val->next;
+		i++;
+	}
+
+	if(i != col-1 && col != 0) {
+		//We need to add some more empty cols
+		while(i < col-1) {
+			curr_val->next = smalloc(sizeof(struct value));
+			curr_val->next->previous = curr_val;
+			curr_val = curr_val->next;
+			curr_val->len = 0;
+			curr_val->orig_len = 0;
+			curr_val->val = strdup("");
+			curr_val->orig_val = strdup("");
+			curr_val->added_val = TRUE;
+			curr_val->next = NULL;
+			i++;
+		}
+
+	}
+
+	curr_val->next = value;
+	value->previous = curr_val;
+
+}
+
+
+
 
 static
 void 
@@ -255,6 +334,14 @@ insert_value(uint32_t row, uint32_t col, char* value) {
 
 
 	struct row * curr_row = csv.rows;
+
+
+	if(row > csv.nrows) {
+
+		insert_value_in_new_cell(row, col, new_value);
+		return;
+	}
+
 
 	//Add something into a new row at the end
 	if(row == csv.nrows) {
@@ -283,6 +370,10 @@ insert_value(uint32_t row, uint32_t col, char* value) {
 		curr_row = curr_row->next;
 	}
 	struct value* curr_val = curr_row->vals;
+	if(col > curr_row->nvals) {
+		insert_value_in_new_cell(row, col, new_value);
+		return;
+	}
 	if( col == curr_row->nvals) {
 		//We are adding a node at the end
 		while( curr_val->next != NULL) {
@@ -322,7 +413,6 @@ static
 void
 fuzz_populate_width(struct state *s)
 {
-	printf("Started fuzz_populate_width\n");
 	uint64_t len = 0;
 
 	slseek(s->payload_fd, 0, SEEK_SET);
@@ -331,7 +421,6 @@ fuzz_populate_width(struct state *s)
 
 	while(curr_row != NULL) {
 
-		// len += dump_row(s->payload_fd, curr_row);
 		struct value * curr_value = curr_row->vals;
 		while(curr_value != NULL) {
 
@@ -368,8 +457,6 @@ fuzz_populate_width(struct state *s)
 	}
 
 	sftruncate(s->payload_fd, len);
-	printf("Ended fuzz_populate_width\n");
-	// fgetc(stdin);
 	deploy();
 }
 
@@ -380,7 +467,6 @@ void
 fuzz_populate_length(struct state *s)
 {
 
-	printf("Started fuzz_populate_length\n");
 	uint64_t len = 0;
 
 	slseek(s->payload_fd, 0, SEEK_SET);
@@ -398,7 +484,6 @@ fuzz_populate_length(struct state *s)
 	}
 
 	sftruncate(s->payload_fd, len);
-	printf("Ended fuzz_populate_length\n");
 	deploy();
 }
 
@@ -431,6 +516,48 @@ dump_row(int fd, struct row *row)
 
 	return len;
 }
+
+/* flip just the control characters */
+static
+void
+fuzz_bit_shift_flip_control_char(struct state *s)
+{
+
+	size_t offset, len = dump_csv(s);
+
+	for (size_t i = 0; i < len; i++) {
+		char ch = s->mem[i];
+
+		switch (ch) {
+		case '\\':
+		case '\n':
+		case ',':
+			offset = i + roll_dice(1, 10); /* Fuzz some neighbouring bytes */
+			offset = MIN(offset, len); /* Don't want to fuzz past the file */
+			bit_shift_in_range(s->payload_fd, i, offset-i);
+			bit_flip_in_range(s->payload_fd, i, offset-i);
+			break;
+		}
+	}
+}
+
+
+/* flip random characters */
+static
+void
+fuzz_bit_shift_flip_chars(struct state *s)
+{
+
+	size_t len = dump_csv(s);
+
+	size_t offset = roll_dice(1, len); /* Fuzz some neighbouring bytes */
+	size_t range = roll_dice(1, 20);
+	range = MIN(offset + range, len) - offset; /* Don't want to fuzz past the file */
+	bit_shift_in_range(s->payload_fd, offset, range);
+	bit_flip_in_range(s->payload_fd, offset, range);
+		
+}
+
 
 /* Here we look for numbers in our csv file and change then to crazy values */
 static
@@ -524,7 +651,6 @@ try_special_chars(struct value* value_to_fuzz, struct state *s) {
 		memcpy(value_to_fuzz->val, bad_strings[i].s, bad_strings[i].n);
 		value_to_fuzz->len = bad_strings[i].n;
 		dump_csv(s);
-		fgetc(stdin);
 		deploy();
 	}
 
@@ -565,7 +691,7 @@ try_bad_nums(struct value* value_to_fuzz, struct state *s)
 
 /* Write the csv file to state->payload_fd */
 static
-void
+off_t
 dump_csv(struct state *s)
 {
 	off_t len = 0;
@@ -575,13 +701,15 @@ dump_csv(struct state *s)
 	struct row * curr_row = csv.rows;
 	while(curr_row != NULL) {
 		struct value * curr_val = curr_row->vals;
+		if(curr_val == NULL) { // This is an empty row
+			len += swrite(s->payload_fd, "\n", 1);
+		}
 		while(curr_val != NULL) {
 			len += swrite (
 				s->payload_fd,
 				curr_val->val,
 				curr_val->len
 				);
-
 			if (curr_val->next == NULL)
 				len += swrite(s->payload_fd, "\n", 1);
 			else
@@ -594,7 +722,54 @@ dump_csv(struct state *s)
 	}
 
 	sftruncate(s->payload_fd, len);
+	return len;
 }
+
+static
+void
+fuzz_empty_cells(struct state *s){
+
+
+	uint64_t nrows = csv.nrows;
+	uint64_t ncols = csv.rows->orig_nvals;
+
+	struct row * curr_row = csv.rows;
+
+	while(curr_row != NULL) { 
+
+		struct value * curr_value = curr_row->vals;
+		while(curr_value != NULL) {
+				if(coin_flip(10)) { //Low as it gets run repeatedly
+					
+					uint32_t row = 0;
+					uint32_t col = 0;
+
+					if (coin_flip(50)) {
+						row = rand()%(nrows*NUM_EMPTY_CELLS_CONSTANT) + nrows;
+						col = rand()%(ncols*NUM_EMPTY_CELLS_CONSTANT);
+					} else {
+						row = rand()%(nrows*NUM_EMPTY_CELLS_CONSTANT);
+						col = rand()%(ncols*NUM_EMPTY_CELLS_CONSTANT) + ncols;
+					}
+
+
+					insert_value(row, col, curr_value->val);
+					dump_csv(s);
+					deploy();
+				}
+
+			curr_value = curr_value->next;
+		}
+		curr_row = curr_row->next;
+	}
+
+	revert_csv_data_structures();
+
+
+}
+
+
+
 
 static
 void
