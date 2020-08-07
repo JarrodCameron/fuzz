@@ -11,7 +11,7 @@
 
 This fuzzer works by initially detecting the file type out of plaintext, CSV, JSON or XML and then parsing the file's data into a data structure for the fuzzer to manipulate. 
 
-After determining the file data type the fuzzer employs tailored strategies based on the binary's datatype. Such as maintaining `{} [] ,` characters for json when fuzzing for format strings but mutating them when testing the binary's parsing ability.
+After determining the file data type the fuzzer employs tailored strategies based on the binary's datatype. Such as maintaining `{} [] ,` characters for JSON when fuzzing for format strings but mutating them when testing the binary's parsing ability.
 
 The fuzzer will always run a few shorter functions at the beginning of the process for vulnerabilities that are easy to check for and can be ruled out.
 
@@ -21,16 +21,16 @@ After this the fuzzer will begin mutating the input in line with some internal s
 
 This fuzzer can find:
 - format string vulnerablities
-- buffer overflow vulnerabilties
+- buffer overflow vulnerabilities
 - bugs with missing or extra control characters
 - bugs parsing non-printable or ascii characters
 - bugs parsing large files
 
 # Possible Improvements
 
-This fuzzer can be improved by more minutely optimising the disk IO. There is the possiblity of strategically calling functions so that the amount of time writing to disk is reduced. It could also  possible to more closely keep track of the changes made to the `testdata.bin` so that `lseek` could be employed to simply revert those specific bytes instead of the whole file. This would reduce disk IO.
+This fuzzer can be improved by more minutely optimising the disk IO. There is the possibility of strategically calling functions so that the amount of time writing to disk is reduced. It could also  possible to more closely keep track of the changes made to the `testdata.bin` so that `lseek` could be employed to simply revert those specific bytes instead of the whole file. This would reduce disk IO.
 
-This can can also be improved by chaining together multiple fuzzing strategies, such as fuzzing numbers while simultaneously fuzzing for buffer overflows. Rather than doing these separately. Multiple generations of fuzzing if you will. 
+This can also be improved by chaining together multiple fuzzing strategies, such as fuzzing numbers while simultaneously fuzzing for buffer overflows. Rather than doing these separately. Multiple generations of fuzzing if you will. 
 
 # Bonus Marks
 
