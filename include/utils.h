@@ -79,7 +79,7 @@ bool isint(const char *s, uint64_t len);
 
 /* Generate a random number between `lo` and `hi` inclusive.
  * For example: roll_dice(2, 4) -> {2, 3, 4} */
-uint32_t roll_dice(uint32_t lo, uint32_t hi);
+uint64_t roll_dice(uint64_t lo, uint64_t hi); /* TODO functions calling this function need to be updated */
 
 /* Flip a bias coin. The bias is between zero and 100. This is done by
  * generating a random number. If the rand number is less than the bias

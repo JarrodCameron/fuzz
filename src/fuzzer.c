@@ -141,6 +141,7 @@ main(int argc, char **argv, char **envp)
 	}
 
 	srand(time(NULL));
+	srand(7); /* TODO Remove this srand */
 
 	init_state(argv[1], argv[2], envp);
 

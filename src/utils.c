@@ -46,8 +46,8 @@ isint(const char *s, uint64_t len)
 
 }
 
-uint32_t
-roll_dice(uint32_t lo, uint32_t hi)
+uint64_t
+roll_dice(uint64_t lo, uint64_t hi)
 {
 	return (rand() % (hi - lo + 1)) + lo;
 }
