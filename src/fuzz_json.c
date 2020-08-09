@@ -36,7 +36,8 @@ static void fuzz_bad_nums(struct state *s);
 static void traverse_json_object(json_value *, joe_handle, jv_handle);
 static void traverse_json_array(json_value *, joe_handle, jv_handle);
 static void fuzz_fmt_str(struct state *s);
-static void fuzz_bit_shift(struct state *s);
+static void fuzz_empty(struct state *s);
+//static void fuzz_bit_shift(struct state *s);
 
 /* Here we add functions used for fuzzing.
  * Each function tests for something different. */
@@ -44,7 +45,8 @@ static void (*fuzz_payloads[])(struct state *) = {
 	fuzz_buffer_overflow,
 	fuzz_bad_nums,
 	fuzz_fmt_str,
-	fuzz_bit_shift,
+	//fuzz_bit_shift,
+	fuzz_empty,
 };
 
 void
@@ -78,6 +80,7 @@ static
 void
 fuzz(struct state *s)
 {
+
 	while (1) {
 		uint32_t idx = roll_dice(0, ARRSIZE(fuzz_payloads)-1);
 		fuzz_payloads[idx](s);
@@ -251,30 +254,38 @@ fuzz_fmt_str(struct state *s)
 	traverse_json(json.jv, &f2, NULL);
 }
 
+/*Zero out and empty entries and values*/
 static
 void
-fuzz_bit_shift(struct state *s)
+fuzz_empty(struct state *s)
 {
-	size_t offset, len = json_dump(s);
+	/* Set entries to NULL */
+	void
+	f3(json_object_entry *entry)
+	{
+		json_char *old_name = entry->name;
+		unsigned int old_len = entry->name_length;
+		json_value *old_value = entry->value;
 
-	for (size_t i = 0; i < len; i++) {
-		char ch = json.mem[i];
+		entry->name = "";
+		json_dump(s);
+		deploy();
 
-		switch (ch) {
-		case '\\':
-		case '\n':
-		case '"':
-		case ',':
-		case '/':
-		case ':':
-		case '[':
-		case ']':
-		case '{':
-		case '}':
-			offset = i + roll_dice(1, 10); /* Fuzz some neighbouring bytes */
-			offset = MIN(offset, len); /* Don't want to fuzz past the file */
-			bit_shift_in_range(s->payload_fd, i, offset-i);
-			break;
-		}
+		entry->name_length = 0;
+		json_dump(s);
+		deploy();
+
+		entry->value = NULL;
+		json_dump(s);
+		deploy();
+
+		entry->name = old_name;
+		entry->name_length = old_len;
+		entry->value = old_value;
 	}
+
+	traverse_json(json.jv, &f3, NULL);
 }
+
+
+

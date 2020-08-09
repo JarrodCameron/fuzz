@@ -147,7 +147,6 @@ main(int argc, char **argv, char **envp)
 
 	system_state.ft = detect_file(system_state.input_file);
 
-
 	fuzz_handles[system_state.ft](&system_state);
 
 	exit_fuzzer();

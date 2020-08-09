@@ -28,7 +28,7 @@ This fuzzer can find:
 
 # Possible Improvements
 
-This fuzzer can be improved by more minutely optimising the disk IO. There is the possibility of strategically calling functions so that the amount of time writing to disk is reduced. It could also  possible to more closely keep track of the changes made to the `testdata.bin` so that `lseek` could be employed to simply revert those specific bytes instead of the whole file. This would reduce disk IO.
+This fuzzer can be improved by more minutely optimising the disk IO. There is the possibility of strategically calling functions so that the amount of time writing to disk is reduced. It could also be possible to more closely keep track of the changes made to the `testdata.bin` so that `lseek` could be employed to simply revert those specific bytes instead of the whole file. This would reduce disk IO.
 
 This can also be improved by chaining together multiple fuzzing strategies, such as fuzzing numbers while simultaneously fuzzing for buffer overflows. Rather than doing these separately. Multiple generations of fuzzing if you will. 
 

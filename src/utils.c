@@ -78,7 +78,7 @@ move_file(const char *oldpath, const char *newpath)
 	ssize_t ret;
 
 	while ((ret = sread(oldfd, buf, ARRSIZE(buf))) > 0)
-		/* we should loop here for parial writes but ain't nobody got time
+		/* we should loop here for partial writes but ain't nobody got time
 		 * for that */
 		swrite(newfd, buf, ret);
 
