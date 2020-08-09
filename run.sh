@@ -37,7 +37,7 @@ if [ -n "$1" ]; then
 	case "$1"
 	in
 		'v') cmd='valgrind --leak-check=full' ;;
-		'V') cmd='valgrind --leak-check=full --show-leak-kinds=all' ;;
+		'V') cmd='valgrind -s --leak-check=full --show-leak-kinds=all' ;;
 		*) echo '???' ; exit 1 ;;
 	esac
 fi

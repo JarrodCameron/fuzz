@@ -45,6 +45,12 @@ static void fuzz_refresh(struct state *s);
 static uint64_t get_num_nodes(xmlNode *root);
 static xmlNode * sXmlCopyNode(xmlNode *node, int extended);
 static void handle_tag_fmt_str(void *data, xmlNode *curr);
+static xmlChar *sXmlStrdup(const xmlChar *cur);
+static xmlNodePtr sXmlAddChild(xmlNodePtr cur, xmlNodePtr elem);
+static xmlNodePtr sXmlAddChildList(xmlNodePtr cur, xmlNodePtr elem);
+static xmlNodePtr sXmlAddNextSibling(xmlNodePtr cur, xmlNodePtr elem);
+static xmlNodePtr sXmlAddPrevSibling(xmlNodePtr cur, xmlNodePtr elem);
+static xmlNodePtr sXmlAddSibling(xmlNodePtr cur, xmlNodePtr elem);
 
 static struct {
 
@@ -66,7 +72,7 @@ static void (*fuzz_payloads[])(struct state *) = {
 	fuzz_tag_fmt_str,     /* Change tag names to format strings */
 	fuzz_props_fmt_str,   /* Change tag properties to format strings */
 	fuzz_populate,        /* Add random nodes to the xml.doc */
-//	fuzz_refresh,         /* Refresh nodes in the xml.doc */
+	fuzz_refresh,         /* Refresh nodes in the xml.doc */
 };
 
 void
@@ -149,12 +155,13 @@ do_buffer_overflow(struct state *s, xmlNode *ptr)
 	for (xmlNode *curr = ptr; curr; curr = curr->next) {
 		if (curr->type == XML_ELEMENT_NODE) {
 
-			const xmlChar *old = xmlStrdup(curr->name); /* TODO make safe */
+			xml.dummy_char = sXmlStrdup(curr->name);
 			xmlNodeSetName(curr, TOXMLCHAR(BIG));
 			save_doc(s);
 			deploy();
-			xmlNodeSetName(curr, old);
-			xmlFree(old);
+			xmlNodeSetName(curr, xml.dummy_char);
+			xmlFree(xml.dummy_char);
+			xml.dummy_char = NULL;
 
 		}
 		do_buffer_overflow(s, curr->children);
@@ -178,15 +185,18 @@ do_fuzz_tag_attrs(struct state *s, xmlNodePtr ptr)
 
 	for (curr = ptr; curr; curr = curr->next) {
 		for (attr = curr->properties; attr; attr = attr->next) {
-			xmlChar *old = xmlGetProp(curr, attr->name);
+			xml.dummy_char = xmlGetProp(curr, attr->name);
+			if (!xml.dummy_char)
+				continue;
 
 			xmlSetProp(curr, attr->name, TOXMLCHAR(BIG));
 			save_doc(s);
 			deploy();
 
-			xmlSetProp(curr, attr->name, old);
+			xmlSetProp(curr, attr->name, xml.dummy_char);
 
-			xmlFree(old);
+			xmlFree(xml.dummy_char);
+			xml.dummy_char = NULL;
 		}
 		do_fuzz_tag_attrs(s, curr->children);
 	}
@@ -224,7 +234,7 @@ handle_tag_fmt_str(void *data, xmlNode *curr)
 	if (curr->type != XML_ELEMENT_NODE)
 		return;
 
-	const xmlChar *old = curr->name;
+	xml.dummy_char = sXmlStrdup(curr->name);
 
 	for (uint32_t i = 0; i < ARRSIZE(fmt_strings); i++) {
 		xmlNodeSetName(curr, TOXMLCHAR(fmt_strings[i]));
@@ -232,7 +242,10 @@ handle_tag_fmt_str(void *data, xmlNode *curr)
 		deploy();
 	}
 
-	xmlNodeSetName(curr, old);
+	xmlNodeSetName(curr, xml.dummy_char);
+
+	xmlFree(xml.dummy_char);
+	xml.dummy_char = NULL;
 }
 
 static
@@ -243,6 +256,8 @@ handle_props_fmt_str(void *data, xmlNode *curr)
 	for (xmlAttr *attr = curr->properties; attr; attr = attr->next) {
 
 		xml.dummy_char = xmlGetProp(curr, attr->name);
+		if (!xml.dummy_char)
+			continue;
 
 		for (uint32_t i = 0; i < ARRSIZE(fmt_strings); i++) {
 			xmlSetProp(curr, attr->name, TOXMLCHAR(fmt_strings[i]));
@@ -288,27 +303,25 @@ insert_node(void *data, xmlNode *curr)
 		return;
 
 	if (*index == 0) {
-		printf("inserting\n");
-		/* TODO make all of these safe */
 		switch (roll_dice(1, 5)) {
 		case 1:
-			xmlAddChild(curr, *new);
+			sXmlAddChild(curr, *new);
 			break;
 
 		case 2:
-			xmlAddChildList(curr, *new);
+			sXmlAddChildList(curr, *new);
 			break;
 
 		case 3:
-			xmlAddNextSibling(curr, *new);
+			sXmlAddNextSibling(curr, *new);
 			break;
 
 		case 4:
-			xmlAddPrevSibling(curr, *new);
+			sXmlAddPrevSibling(curr, *new);
 			break;
 
 		case 5:
-			xmlAddSibling(curr, *new);
+			sXmlAddSibling(curr, *new);
 			break;
 
 		default:
@@ -362,8 +375,7 @@ fuzz_populate(UNUSED struct state *s)
 	if (!curr) /* some error? */
 		return;
 
-	/* TODO make safe */
-	xmlNode *copy = xmlCopyNode(curr, 1 /* recursive */);
+	xmlNode *copy = sXmlCopyNode(curr, 1 /* recursive */);
 
 	index = roll_dice(0, xml.num_nodes-1);
 
@@ -390,9 +402,33 @@ fuzz_populate(UNUSED struct state *s)
 
 static
 void
-fuzz_refresh(struct state *s) /* TODO */
+fuzz_refresh(struct state *s)
 {
-	(void) s;
+	/* Counter is used to we don't refresh the xml.doc everytime this function
+	 * is called */
+	static uint64_t refresh_counter = 0;
+
+	if (refresh_counter == 0)
+		refresh_counter = roll_dice(1, 10);
+
+	refresh_counter--;
+
+	if (refresh_counter != 0)
+		return;
+
+	xmlFreeDoc(xml.doc);
+
+	xml.doc = xmlReadMemory(
+		s->mem,
+		s->stat.st_size,
+		"/dev/null",
+		NULL,
+		0
+	);
+	if (!xml.doc)
+		panic("Failed to init xml parser in fuzz_refresh\n");
+
+	xml.num_nodes = get_num_nodes(sXmlDocGetRootElement(xml.doc));
 }
 
 static
@@ -438,6 +474,66 @@ sXmlCopyNode(xmlNode *node, int extended)
 	xmlNode *ret = xmlCopyNode(node, extended);
 	if (!ret)
 		panic("Error: xmlCopyNode(%p, %d)\n", node, extended);
+	return ret;
+}
+
+static
+xmlChar *
+sXmlStrdup(const xmlChar *cur)
+{
+	xmlChar *ret = xmlStrdup(cur);
+	if (!ret)
+		panic("Error: xmlStrdup(\"%s\")\n", cur);
+	return ret;
+}
+
+static
+xmlNodePtr
+sXmlAddChild(xmlNodePtr cur, xmlNodePtr elem)
+{
+	xmlNodePtr ret = xmlAddChild(cur, elem);
+	if (!ret)
+		panic("Error: xmlAddChild(%p, %p)\n", cur, elem);
+	return ret;
+}
+
+static
+xmlNodePtr
+sXmlAddChildList(xmlNodePtr cur, xmlNodePtr elem)
+{
+	xmlNodePtr ret = xmlAddChildList(cur, elem);
+	if (!ret)
+		panic("Error: xmlAddChildList(%p, %p)\n", cur, elem);
+	return ret;
+}
+
+static
+xmlNodePtr
+sXmlAddNextSibling(xmlNodePtr cur, xmlNodePtr elem)
+{
+	xmlNodePtr ret = xmlAddNextSibling(cur, elem);
+	if (!ret)
+		panic("Error: xmlAddNextSibling(%p, %p)\n", cur, elem);
+	return ret;
+}
+
+static
+xmlNodePtr
+sXmlAddPrevSibling(xmlNodePtr cur, xmlNodePtr elem)
+{
+	xmlNodePtr ret = xmlAddPrevSibling(cur, elem);
+	if (!ret)
+		panic("Error: xmlAddPrevSibling(%p, %p)\n", cur, elem);
+	return ret;
+}
+
+static
+xmlNodePtr
+sXmlAddSibling(xmlNodePtr cur, xmlNodePtr elem)
+{
+	xmlNodePtr ret = xmlAddSibling(cur, elem);
+	if (!ret)
+		panic("Error: xmlAddSibling(%p, %p)\n", cur, elem);
 	return ret;
 }
 
