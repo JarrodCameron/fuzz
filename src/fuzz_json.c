@@ -38,7 +38,7 @@ static void traverse_json_array(json_value *, joe_handle, jv_handle);
 static void fuzz_fmt_str(struct state *s);
 static void fuzz_bit_shift(struct state *s);
 static void fuzz_empty(struct state *s);
-static void fuzz_extra_entries(struct state *s);
+static void fuzz_extra_objects(struct state *s);
 static json_value * copy_entries(json_value * new, json_value * old);
 
 /* Here are the functions that can be run multiple times and
@@ -53,7 +53,7 @@ static void (*fuzz_payloads_single[])(struct state *) = {
 	fuzz_bad_nums,
 	fuzz_fmt_str,
 	fuzz_empty,
-	fuzz_extra_entries,
+	fuzz_extra_objects,
 };
 
 void
@@ -336,10 +336,10 @@ fuzz_empty(struct state *s)
 	traverse_json(json.jv, &f3, NULL);
 }
 
-/*Create extra entries*/
+/*Create extra objects in the entry*/
 static
 void
-fuzz_extra_entries(struct state *s)
+fuzz_extra_objects(struct state *s)
 {
 	json_value *new_jv = json_object_new(json.jv->u.object.length);
 	new_jv = copy_entries(new_jv, json.jv);
@@ -364,3 +364,5 @@ copy_entries(json_value * new, json_value * old) {
 	traverse_json(json.jv, &f4, NULL);
 	return new;
 }
+
+/*Create extra entries */
