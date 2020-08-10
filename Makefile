@@ -22,6 +22,7 @@ fuzzer: $(addprefix $(BUILDDIR)/, $(OBJS))
 	$(CC) -o fuzzer $^ -Llibs $(LIBS)
 	@echo ':)'
 
+# TODO Remove dummy
 $(DUMMY): dummy/dummy.c
 	make -C dummy
 

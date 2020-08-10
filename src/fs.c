@@ -17,11 +17,11 @@ static unsigned char get_elf_class(struct state *s);
 static void **arr_join(const void **a, const void **b);
 static void parent_pipes_init(int cmd_pipe[2], int info_pipe[2]);
 static void child_pipes_init(int cmd_pipe[2], int info_pipe[2]);
-static void boring_deploy(void);
+static int boring_deploy(void);
 static int fs_test(void);
 
 /* Using for overwriting the deploy function */
-static void (*deploy_hook)(void) = NULL;
+static int (*deploy_hook)(void) = NULL;
 
 static struct state *system_state = NULL;
 
@@ -52,15 +52,13 @@ fs_init(struct state *s)
 	}
 }
 
-void
+int
 deploy(void)
 {
 	int wstatus;
 
-	if (deploy_hook) {
-		deploy_hook();
-		return;
-	}
+	if (deploy_hook)
+		return deploy_hook();
 
 	/* Tell the fork server to run */
 	swrite(CMD_FD, CMD_RUN, sizeof(CMD_RUN)-1);
@@ -75,10 +73,12 @@ deploy(void)
 
 		exit_fuzzer();
 	}
+
+	return wstatus;
 }
 
 static
-void
+int
 boring_deploy(void)
 {
 	int wstatus, fd;
@@ -121,6 +121,8 @@ boring_deploy(void)
 		}
 		break;
 	}
+
+	return wstatus;
 }
 
 static

@@ -30,34 +30,39 @@
 typedef void (*iter_handle)(void *, xmlNodePtr);
 
 /* Helper functions */
+static int save_doc(struct state *s);
+static uint64_t get_num_nodes(xmlNode *root);
+static void do_buffer_overflow(void *data, xmlNode *ptr);
+static void do_fuzz_tag_attrs(void *data, xmlNodePtr ptr);
 static void fuzz(struct state *s);
 static void fuzz_buffer_overflow(struct state *s);
-static xmlNodePtr sXmlDocGetRootElement(xmlDocPtr doc);
-static const char *dbg_xmlElementType(xmlElementType type);
-static int save_doc(struct state *s);
-static void do_fuzz_tag_attrs(struct state *s, xmlNodePtr ptr);
+static void fuzz_populate(UNUSED struct state *s);
+static void fuzz_props_fmt_str(struct state *s);
+static void fuzz_refresh(struct state *s);
 static void fuzz_tag_attrs(struct state *s);
 static void fuzz_tag_fmt_str(struct state *s);
-static void fuzz_props_fmt_str(struct state *s);
-static void iterate_xmldoc(xmlNodePtr root, void *data, iter_handle ih);
-static void fuzz_populate(struct state *s);
-static void fuzz_refresh(struct state *s);
-static uint64_t get_num_nodes(xmlNode *root);
-static xmlNode * sXmlCopyNode(xmlNode *node, int extended);
+static void get_node(void *data, xmlNode *curr);
+static void handle_props_fmt_str(void *data, xmlNode *curr);
 static void handle_tag_fmt_str(void *data, xmlNode *curr);
+static void insert_node(void *data, xmlNode *curr);
+static void iterate_xmldoc(xmlNodePtr root, void *data, iter_handle ih);
 static xmlChar *sXmlStrdup(const xmlChar *cur);
+static xmlNode *sXmlCopyNode(xmlNode *node, int extended);
 static xmlNodePtr sXmlAddChild(xmlNodePtr cur, xmlNodePtr elem);
 static xmlNodePtr sXmlAddChildList(xmlNodePtr cur, xmlNodePtr elem);
 static xmlNodePtr sXmlAddNextSibling(xmlNodePtr cur, xmlNodePtr elem);
 static xmlNodePtr sXmlAddPrevSibling(xmlNodePtr cur, xmlNodePtr elem);
 static xmlNodePtr sXmlAddSibling(xmlNodePtr cur, xmlNodePtr elem);
+static xmlNodePtr sXmlDocGetRootElement(xmlDocPtr doc);
+static void fuzz_big_print(struct state *s);
+static void fuzz_clone_root(struct state *s);
+static void xml_deploy(struct state *s);
 
 static struct {
 
 	/* This are variables that will be free in the case of a memory leak */
 	xmlChar *dummy_char; /* for xmlFree() */
 
-	/* TODO Would be nice to store the root node here */
 	xmlDocPtr doc;
 	xmlSaveCtxtPtr ctx;
 
@@ -71,6 +76,8 @@ static void (*fuzz_payloads[])(struct state *) = {
 	fuzz_tag_attrs,       /* Buffer overflow tag properties */
 	fuzz_tag_fmt_str,     /* Change tag names to format strings */
 	fuzz_props_fmt_str,   /* Change tag properties to format strings */
+	fuzz_big_print,       /* Print the xml.doc a few times */
+	fuzz_clone_root,      /* Insert the root node inside of the tree */
 	fuzz_populate,        /* Add random nodes to the xml.doc */
 	fuzz_refresh,         /* Refresh nodes in the xml.doc */
 };
@@ -132,7 +139,7 @@ fuzz(struct state *s)
 
 static
 uint64_t
-get_num_nodes(xmlNode *root)
+get_num_nodes(xmlNode *root) /* TODO This function should use the iterate function */
 {
 	if (!root)
 		return 0;
@@ -150,55 +157,85 @@ get_num_nodes(xmlNode *root)
 
 static
 void
-do_buffer_overflow(struct state *s, xmlNode *ptr)
+fuzz_clone_root(struct state *s)
 {
-	for (xmlNode *curr = ptr; curr; curr = curr->next) {
-		if (curr->type == XML_ELEMENT_NODE) {
+	check();
 
-			xml.dummy_char = sXmlStrdup(curr->name);
-			xmlNodeSetName(curr, TOXMLCHAR(BIG));
-			save_doc(s);
-			deploy();
-			xmlNodeSetName(curr, xml.dummy_char);
-			xmlFree(xml.dummy_char);
-			xml.dummy_char = NULL;
+	xmlNode *root = sXmlDocGetRootElement(xml.doc);
 
-		}
-		do_buffer_overflow(s, curr->children);
+	xmlNode *copy = sXmlCopyNode(root, 1 /* recursive */);
+
+	if (root->children) {
+		check();
+		sXmlAddNextSibling(root->children, copy);
+	} else {
+		check();
+		sXmlAddChildList(root, copy);
 	}
+
+	save_doc(s);
+	xml_deploy(s);
+}
+
+static
+void
+do_buffer_overflow(void *data, xmlNode *ptr)
+{
+	struct state *s = data;
+
+	if (ptr->type != XML_ELEMENT_NODE)
+		return;
+
+	/* 10% chance of testing bof */
+	if (coin_flip(10))
+		return;
+
+	xml.dummy_char = sXmlStrdup(ptr->name);
+	xmlNodeSetName(ptr, TOXMLCHAR(BIG));
+	save_doc(s);
+	xml_deploy(s);
+	xmlNodeSetName(ptr, xml.dummy_char);
+	xmlFree(xml.dummy_char);
+	xml.dummy_char = NULL;
 }
 
 static
 void
 fuzz_buffer_overflow(struct state *s)
 {
-	xmlNodePtr ptr = sXmlDocGetRootElement(xml.doc);
-	do_buffer_overflow(s, ptr);
+	check();
+	iterate_xmldoc (
+		sXmlDocGetRootElement(xml.doc),
+		s,
+		do_buffer_overflow
+	);
 }
 
 static
 void
-do_fuzz_tag_attrs(struct state *s, xmlNodePtr ptr)
+do_fuzz_tag_attrs(void *data, xmlNodePtr ptr)
 {
-	xmlNode *curr;
 	xmlAttr *attr;
+	struct state *s = data;
 
-	for (curr = ptr; curr; curr = curr->next) {
-		for (attr = curr->properties; attr; attr = attr->next) {
-			xml.dummy_char = xmlGetProp(curr, attr->name);
-			if (!xml.dummy_char)
-				continue;
+	for (attr = ptr->properties; attr; attr = attr->next) {
 
-			xmlSetProp(curr, attr->name, TOXMLCHAR(BIG));
-			save_doc(s);
-			deploy();
+		/* 10% chance of testing bof */
+		if (coin_flip(10))
+			return;
 
-			xmlSetProp(curr, attr->name, xml.dummy_char);
+		xml.dummy_char = xmlGetProp(ptr, attr->name);
+		if (!xml.dummy_char)
+			continue;
 
-			xmlFree(xml.dummy_char);
-			xml.dummy_char = NULL;
-		}
-		do_fuzz_tag_attrs(s, curr->children);
+		xmlSetProp(ptr, attr->name, TOXMLCHAR(BIG));
+		save_doc(s);
+		xml_deploy(s);
+
+		xmlSetProp(ptr, attr->name, xml.dummy_char);
+
+		xmlFree(xml.dummy_char);
+		xml.dummy_char = NULL;
 	}
 }
 
@@ -206,14 +243,16 @@ static
 void
 fuzz_tag_attrs(struct state *s)
 {
-	xmlNodePtr ptr = sXmlDocGetRootElement(xml.doc);
-	do_fuzz_tag_attrs(s, ptr);
+	check();
+	iterate_xmldoc(
+		sXmlDocGetRootElement(xml.doc),
+		s,
+		do_fuzz_tag_attrs
+	);
 }
 
 /* TODO We could segfault if we iterate too many time. To fix this we need a
  * stack to store all possible iterations */
-/* TODO Every function that iterates the xml.doc should use this function once
- * it uses the stack*/
 static
 void
 iterate_xmldoc(xmlNodePtr root, void *data, iter_handle ih)
@@ -234,12 +273,15 @@ handle_tag_fmt_str(void *data, xmlNode *curr)
 	if (curr->type != XML_ELEMENT_NODE)
 		return;
 
+	if (coin_flip(5))
+		return;
+
 	xml.dummy_char = sXmlStrdup(curr->name);
 
 	for (uint32_t i = 0; i < ARRSIZE(fmt_strings); i++) {
 		xmlNodeSetName(curr, TOXMLCHAR(fmt_strings[i]));
 		save_doc(s);
-		deploy();
+		xml_deploy(s);
 	}
 
 	xmlNodeSetName(curr, xml.dummy_char);
@@ -253,6 +295,10 @@ void
 handle_props_fmt_str(void *data, xmlNode *curr)
 {
 	struct state *s = data;
+
+	if (coin_flip(5))
+		return;
+
 	for (xmlAttr *attr = curr->properties; attr; attr = attr->next) {
 
 		xml.dummy_char = xmlGetProp(curr, attr->name);
@@ -262,7 +308,7 @@ handle_props_fmt_str(void *data, xmlNode *curr)
 		for (uint32_t i = 0; i < ARRSIZE(fmt_strings); i++) {
 			xmlSetProp(curr, attr->name, TOXMLCHAR(fmt_strings[i]));
 			save_doc(s);
-			deploy();
+			xml_deploy(s);
 		}
 
 		xmlSetProp(curr, attr->name, xml.dummy_char);
@@ -276,6 +322,7 @@ static
 void
 fuzz_tag_fmt_str(struct state *s)
 {
+	check();
 	iterate_xmldoc(sXmlDocGetRootElement(xml.doc), s, handle_tag_fmt_str);
 }
 
@@ -283,21 +330,52 @@ static
 void
 fuzz_props_fmt_str(struct state *s)
 {
+	check();
 	iterate_xmldoc(sXmlDocGetRootElement(xml.doc), s, handle_props_fmt_str);
 }
 
-/* Return values:
- * 0 -> The "new" node has NOT been inserted, we need to keep looking
- * 1 -> The "new" node HAS been inserted, we can now break
- */
+static
+void
+fuzz_big_print(struct state *s)
+{
+	check();
+	off_t bytes = 0;
+	uint64_t niters;
+	int ret;
+
+	/* This is an expensive operation so we don't want to do this everytime */
+	if (roll_dice(1, 10000) == 10)
+		return;
+
+	check();
+
+	slseek(s->payload_fd, 0, SEEK_SET);
+
+	for (niters = roll_dice(100, 10000); niters; niters--) {
+
+		ret = xmlSaveDoc(xml.ctx, xml.doc);
+		if (ret == -1)
+			panic("Failed to save xml doc in fuzz_big_print\n");
+
+		ret = xmlSaveFlush(xml.ctx);
+		if (ret == -1)
+			panic("Failed to flush xml doc");
+
+		/* comp6447 makes me scared of type casting ints */
+		bytes += (off_t) ret;
+	}
+
+	sftruncate(s->payload_fd, (off_t) bytes);
+
+	xml_deploy(s);
+}
+
 static
 void
 insert_node(void *data, xmlNode *curr)
 {
-	/* TODO Can we macro this? */
-	void **args = data;
-	uint64_t *index = (uint64_t *) args[0];
-	xmlNode **new = (xmlNode **) args[1];
+	uint64_t *index = GETARG(uint64_t *, data, 0);
+	xmlNode **new = GETARG(xmlNode **, data, 1);
 
 	if (curr->type == XML_TEXT_NODE)
 		return;
@@ -339,10 +417,8 @@ static
 void
 get_node(void *data, xmlNode *curr)
 {
-	/* TODO Can we macro this? */
-	void **args = data;
-	uint64_t *index = (uint64_t *) args[0];
-	xmlNode **ret = (xmlNode **) args[1];
+	uint64_t *index = GETARG(uint64_t *, data, 0);
+	xmlNode **ret = GETARG(xmlNode **, data, 1);
 
 	if (curr->type == XML_TEXT_NODE)
 		return;
@@ -357,64 +433,60 @@ static
 void
 fuzz_populate(UNUSED struct state *s)
 {
+	check();
 	void *args[2];
 	xmlNode *curr = NULL;
 	uint64_t index;
 
-	index = roll_dice(0, xml.num_nodes-1);
+	for (int i = 0; i < 20; i++) {
 
-	args[0] = &index; /* Argument: uint64_t* */
-	args[1] = &curr;  /* Return value: xmlNode** */
+		index = roll_dice(0, xml.num_nodes-1);
 
-	iterate_xmldoc(
-		sXmlDocGetRootElement(xml.doc),
-		&args,
-		get_node
-	);
+		args[0] = &index; /* Argument: uint64_t* */
+		args[1] = &curr;  /* Return value: xmlNode** */
 
-	if (!curr) /* some error? */
-		return;
+		iterate_xmldoc(
+			sXmlDocGetRootElement(xml.doc),
+			&args,
+			get_node
+		);
 
-	xmlNode *copy = sXmlCopyNode(curr, 1 /* recursive */);
+		if (!curr) /* some error? */
+			return;
 
-	index = roll_dice(0, xml.num_nodes-1);
+		xmlNode *copy = sXmlCopyNode(curr, 1 /* recursive */);
 
-	args[0] = &index; /* Arugment: Which node to insert into tree */
-	args[1] = &copy;  /* Arugment: The node that will be inserted */
+		uint64_t new_num_nodes = get_num_nodes(copy);
 
-	iterate_xmldoc(
-		sXmlDocGetRootElement(xml.doc),
-		&args,
-		insert_node
-	);
+		index = roll_dice(0, xml.num_nodes-1);
 
-	if (copy) {
-		/* The node was not inserted for some reason */
-		xmlFree(copy);
-		return;
+		args[0] = &index; /* Arugment: Which node to insert into tree */
+		args[1] = &copy;  /* Arugment: The node that will be inserted */
+
+		iterate_xmldoc(
+			sXmlDocGetRootElement(xml.doc),
+			&args,
+			insert_node
+		);
+
+		if (copy) {
+			/* The node was not inserted for some reason */
+			xmlFree(copy);
+			return;
+		}
+
+		xml.num_nodes += new_num_nodes;
+
+		save_doc(s);
+		xml_deploy(s);
 	}
-
-	xml.num_nodes += get_num_nodes(copy);
-
-	save_doc(s);
-	deploy();
 }
 
 static
 void
 fuzz_refresh(struct state *s)
 {
-	/* Counter is used to we don't refresh the xml.doc everytime this function
-	 * is called */
-	static uint64_t refresh_counter = 0;
-
-	if (refresh_counter == 0)
-		refresh_counter = roll_dice(1, 10);
-
-	refresh_counter--;
-
-	if (refresh_counter != 0)
-		return;
+	check();
 
 	xmlFreeDoc(xml.doc);
 
@@ -448,6 +520,7 @@ save_doc(struct state *s)
 	int bytes;
 
 	slseek(s->payload_fd, 0, SEEK_SET);
+	sftruncate(s->payload_fd, 0);
 
 	/* Quote from libxml documentation:
 	 *     todo: The function is not fully implemented yet as it does not
@@ -461,8 +534,6 @@ save_doc(struct state *s)
 	bytes = xmlSaveFlush(xml.ctx);
 	if (bytes == -1)
 		panic("Failed to flush xml doc");
-
-	sftruncate(s->payload_fd, (off_t) bytes);
 
 	return bytes;
 }
@@ -535,6 +606,23 @@ sXmlAddSibling(xmlNodePtr cur, xmlNodePtr elem)
 	if (!ret)
 		panic("Error: xmlAddSibling(%p, %p)\n", cur, elem);
 	return ret;
+}
+
+/* The victim program usuall aborts() if there is can error. It's likely that
+ * if we keep mutating input then it will keep aborting, therefore we start
+ * fresh stop wasting time */
+static
+void
+xml_deploy(struct state *s)
+{
+	int wstatus = deploy();
+	if (WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGABRT) {
+
+		/* 10% chance to refresh */
+		if (coin_flip(10)) {
+			fuzz_refresh(s);
+		}
+	}
 }
 
 UNUSED

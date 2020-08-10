@@ -28,6 +28,10 @@
 #define MIN(A,B) ((A<B)?(A):(B))
 #define MAX(A,B) ((A>B)?(A):(B))
 
+/* Given a "void *", convert it to an array of "void *", index into it, and
+ * type cast it */
+#define GETARG(TYPE,ARGS,INDEX) ((TYPE) (((void **) ARGS)[INDEX]))
+
 /* Since I'm too lazy to open gdb... */
 #define check() printf("Here -> %d (%s)\n", __LINE__, __FUNCTION__)
 
