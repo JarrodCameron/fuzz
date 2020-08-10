@@ -38,8 +38,10 @@ static void traverse_json_array(json_value *, joe_handle, jv_handle);
 static void fuzz_fmt_str(struct state *s);
 static void fuzz_bit_shift(struct state *s);
 static void fuzz_empty(struct state *s);
+static void fuzz_extra_entries(struct state *s);
+static json_value * copy_entries();
 static void fuzz_extra_objects(struct state *s);
-static json_value * copy_entries(json_value * new, json_value * old);
+//static json_value * append_objects(json_value *new, json_value *old);
 
 /* Here are the functions that can be run multiple times and
    do different things each time. */
@@ -49,10 +51,11 @@ static void (*fuzz_payloads_repeat[])(struct state *) = {
 
 /* Here are the functions that should be only run once */
 static void (*fuzz_payloads_single[])(struct state *) = {
-	fuzz_buffer_overflow,
-	fuzz_bad_nums,
-	fuzz_fmt_str,
-	fuzz_empty,
+	//fuzz_buffer_overflow,
+	//fuzz_bad_nums,
+	//fuzz_fmt_str,
+	//fuzz_empty,
+	//fuzz_extra_entries,
 	fuzz_extra_objects,
 };
 
@@ -92,10 +95,10 @@ fuzz(struct state *s)
 		fuzz_payloads_single[i](s);
 	}
 
-	while (1) {
+	/*while (1) {
 		uint32_t idx = roll_dice(0, ARRSIZE(fuzz_payloads_repeat)-1);
 		fuzz_payloads_repeat[idx](s);
-	}
+	}*/
 }
 
 /* This function traverses the json object and invokes joeh() and jvh() on each
@@ -336,25 +339,26 @@ fuzz_empty(struct state *s)
 	traverse_json(json.jv, &f3, NULL);
 }
 
-/*Create extra objects in the entry*/
+/*Create extra entries*/
 static
 void
-fuzz_extra_objects(struct state *s)
+fuzz_extra_entries(struct state *s)
 {
-	json_value *new_jv = json_object_new(json.jv->u.object.length);
-	new_jv = copy_entries(new_jv, json.jv);
-	json_object_push(new_jv, "extra", json_string_new ("extra_value"));
+	json_value *new_jv = copy_entries();
+	for (uint32_t i = 0; i < 100; i++) {
+		json_object_push(new_jv, "extra", json_string_new ("extra_value"));
+	}
 
 	json_dump(s);
 	deploy();
 
-	//json_value_free(new_jv);
 }
 
-//Copy entries from old across to new
+//Copy entries from json.jv across to new
 static
 json_value * 
-copy_entries(json_value * new, json_value * old) {
+copy_entries() {
+	json_value *new = json_object_new(json.jv->u.object.length);
 	void
 	f4(json_object_entry *entry)
 	{
@@ -365,4 +369,28 @@ copy_entries(json_value * new, json_value * old) {
 	return new;
 }
 
-/*Create extra entries */
+/*Append extra objects*/
+static
+void
+fuzz_extra_objects(struct state *s)
+{
+	json_value *new1 = copy_entries();
+	char * buf = malloc(json_measure(new1));
+	json_serialize(buf, new1);
+	printf("old: %s\n", buf);
+
+	buf = malloc(json_measure(new1));
+	json_serialize(buf, new1);
+	printf("new: %s\n", buf);
+
+
+	json_dump(s);
+	deploy();
+}
+//Copy entries from old across to new
+/*static
+json_value * 
+append_objects(json_value *new, json_value *old) {
+	
+	return new;
+}*/
