@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -44,6 +45,12 @@ isint(const char *s, uint64_t len)
 
 	return true;
 
+}
+
+bool
+isint0(const char *s)
+{
+	return isint(s, strlen(s));
 }
 
 uint64_t

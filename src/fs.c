@@ -19,6 +19,7 @@ static void parent_pipes_init(int cmd_pipe[2], int info_pipe[2]);
 static void child_pipes_init(int cmd_pipe[2], int info_pipe[2]);
 static int boring_deploy(void);
 static int fs_test(void);
+static void set_target_output(void);
 
 /* Using for overwriting the deploy function */
 static int (*deploy_hook)(void) = NULL;
@@ -42,6 +43,7 @@ fs_init(struct state *s)
 	switch (pid) {
 	case 0: /* child */
 		child_pipes_init(cmd_pipe, info_pipe);
+		set_target_output();
 		spawn_target(s);
 
 	default: /* parent */
@@ -75,6 +77,23 @@ deploy(void)
 	}
 
 	return wstatus;
+}
+
+static
+void
+set_target_output(void)
+{
+#ifdef TARGET_OUTPUT
+	int fd = sopen(TARGET_OUTPUT, O_WRONLY);
+
+	sdup2(fd, 1 /* stdin */);
+	sdup2(fd, 2 /* stderr */);
+
+	sclose(fd);
+#else
+	return;
+#endif /* TARGET_OUTPUT */
+
 }
 
 static

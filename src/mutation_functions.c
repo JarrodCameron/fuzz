@@ -23,19 +23,6 @@
 #include "mutation_functions.h"
 #include "safe.h"
 
-
-// void deploy() {
-// 	int fileDes = open(TESTDATA_FILE, O_RDONLY);
-// 	// printf("%d\n", fileDes);
-// 	int len_of_file = lseek(fileDes,0,SEEK_END);
-// 	lseek(fileDes,0,SEEK_SET);
-// 	char *buf = malloc(len_of_file);
-
-// 	read(fileDes, buf, len_of_file);
-// 	printf("Testdata.bin: %s\n", buf);
-// 	close(fileDes);
-// }
-
 void
 bit_shift_in_range(int fd, uint32_t start_range, uint32_t len)
 {
@@ -93,65 +80,51 @@ bit_shift_in_range(int fd, uint32_t start_range, uint32_t len)
 
 
 void bit_flip_in_range(int fd, int start_range, int len) {
-	lseek(fd, start_range, SEEK_SET);
+	slseek(fd, start_range, SEEK_SET);
 	unsigned char mask = 255;
-	char *bytes = malloc(len);
-	read(fd, bytes, len);
-	lseek(fd, start_range, SEEK_SET);
-
-	// printf("%c\n",bytes[1]);
+	char *bytes = smalloc(len);
+	sread(fd, bytes, len);
+	slseek(fd, start_range, SEEK_SET);
 
 	int i = 0;
 	while (i < len) {
 
 		char new_byte = (mask^bytes[i]);
 
-		lseek(fd, start_range+i, SEEK_SET);
-		write(fd, &new_byte, 1);
+		slseek(fd, start_range+i, SEEK_SET);
+		swrite(fd, &new_byte, 1);
 		deploy();
 
-		lseek(fd, start_range+i, SEEK_SET);
-		write(fd, &bytes[i], 1);
+		slseek(fd, start_range+i, SEEK_SET);
+		swrite(fd, &bytes[i], 1);
 
 		i++;
 	}
-
-	// i = 0;
-	// while(i < 15) {
-	// 	mask = rand();
-	// 	printf("%hhx\n",mask);
-	// 	i++;
-	// }
 
 	i = 0;
 	while (i < NUM_OF_BIT_FLIP_ITERATIONS_CONSTANT*len) {
 
 		mask = rand();
 
-		// printf("The mask is: %hhd\n", mask);
-
 		int byte_to_flip = rand()%(len);
-
-		// printf("byte to flip: %d\n", byte_to_flip);
 
 		char new_byte = (mask^bytes[byte_to_flip]);
 
-		// printf("New byte is %c\n", new_byte);
-
-		lseek(fd, start_range+byte_to_flip, SEEK_SET);
-		write(fd, &new_byte, 1);
+		slseek(fd, start_range+byte_to_flip, SEEK_SET);
+		swrite(fd, &new_byte, 1);
 		deploy();
 
-		lseek(fd, start_range+byte_to_flip, SEEK_SET);
-		write(fd, &bytes[byte_to_flip], 1);
+		slseek(fd, start_range+byte_to_flip, SEEK_SET);
+		swrite(fd, &bytes[byte_to_flip], 1);
 
 		i++;
 	}
 
 
 
-	lseek(fd, start_range, SEEK_SET);
-	write(fd, bytes, len);
+	slseek(fd, start_range, SEEK_SET);
+	swrite(fd, bytes, len);
+	free(bytes);
 }
 
 

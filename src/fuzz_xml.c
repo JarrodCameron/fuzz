@@ -10,11 +10,15 @@
 
 #include "fs.h"
 #include "fuzz_xml.h"
+#include "mutation_functions.h"
 #include "safe.h"
 #include "utils.h"
 
 /* Cast string to a "const xmlChar *" */
 #define TOXMLCHAR(S) ((const unsigned char *) S)
+
+/* So we have something to look at while the program is running */
+#define CHECK() printf("[Nodes: %4lu] %s\n", xml.num_nodes, (__FUNCTION__))
 
 /* Examples can be found on:
  *     http://www.xmlsoft.org/examples/index.html
@@ -30,20 +34,34 @@
 typedef void (*iter_handle)(void *, xmlNodePtr);
 
 /* Helper functions */
+static const char *dbg_xmlElementType(xmlElementType type);
 static int save_doc(struct state *s);
 static uint64_t get_num_nodes(xmlNode *root);
+static void add_node_random(xmlNode *curr, xmlNode *new);
 static void do_buffer_overflow(void *data, xmlNode *ptr);
 static void do_fuzz_tag_attrs(void *data, xmlNodePtr ptr);
 static void fuzz(struct state *s);
+static void fuzz_big_print(struct state *s);
 static void fuzz_buffer_overflow(struct state *s);
-static void fuzz_populate(UNUSED struct state *s);
+static void fuzz_clone_root(struct state *s);
+static void fuzz_cont_bad_ints(struct state *s);
+static void fuzz_cont_bof(struct state *s);
+static void fuzz_cont_fmt(struct state *s);
+static void fuzz_populate(struct state *s);
+static void fuzz_props_bad_ints(struct state *s);
 static void fuzz_props_fmt_str(struct state *s);
 static void fuzz_refresh(struct state *s);
+static void fuzz_rnd_flip(struct state *s);
+static void fuzz_rnd_shift(struct state *s);
 static void fuzz_tag_attrs(struct state *s);
 static void fuzz_tag_fmt_str(struct state *s);
 static void get_node(void *data, xmlNode *curr);
+static void handle_cont_bof(void *data, xmlNode *curr);
+static void handle_cont_fmt(void *data, xmlNode *curr);
+static void handle_props_bad_ints(void *data, xmlNode *curr);
 static void handle_props_fmt_str(void *data, xmlNode *curr);
 static void handle_tag_fmt_str(void *data, xmlNode *curr);
+static void hanlde_cont_bad_ints(void *data, xmlNode *curr);
 static void insert_node(void *data, xmlNode *curr);
 static void iterate_xmldoc(xmlNodePtr root, void *data, iter_handle ih);
 static xmlChar *sXmlStrdup(const xmlChar *cur);
@@ -54,9 +72,6 @@ static xmlNodePtr sXmlAddNextSibling(xmlNodePtr cur, xmlNodePtr elem);
 static xmlNodePtr sXmlAddPrevSibling(xmlNodePtr cur, xmlNodePtr elem);
 static xmlNodePtr sXmlAddSibling(xmlNodePtr cur, xmlNodePtr elem);
 static xmlNodePtr sXmlDocGetRootElement(xmlDocPtr doc);
-static void fuzz_big_print(struct state *s);
-static void fuzz_clone_root(struct state *s);
-static void xml_deploy(struct state *s);
 
 static struct {
 
@@ -80,6 +95,12 @@ static void (*fuzz_payloads[])(struct state *) = {
 	fuzz_clone_root,      /* Insert the root node inside of the tree */
 	fuzz_populate,        /* Add random nodes to the xml.doc */
 	fuzz_refresh,         /* Refresh nodes in the xml.doc */
+	fuzz_props_bad_ints,  /* Fuzz properties for bad ints */
+	fuzz_cont_bad_ints,   /* Fuzz content for bad ints */
+	fuzz_cont_bof,        /* Fuzz buffer overflow of content */
+	fuzz_cont_fmt,        /* Fuzz format strings of content */
+	fuzz_rnd_shift,       /* Fuzz random parts by bit shifting */
+	fuzz_rnd_flip,        /* Fuzz random parts by bit flipping */
 };
 
 void
@@ -139,7 +160,7 @@ fuzz(struct state *s)
 
 static
 uint64_t
-get_num_nodes(xmlNode *root) /* TODO This function should use the iterate function */
+get_num_nodes(xmlNode *root)
 {
 	if (!root)
 		return 0;
@@ -159,22 +180,50 @@ static
 void
 fuzz_clone_root(struct state *s)
 {
-	check();
+	CHECK();
 
 	xmlNode *root = sXmlDocGetRootElement(xml.doc);
 
-	xmlNode *copy = sXmlCopyNode(root, 1 /* recursive */);
+	xmlNode *copy = xmlCopyNode(root, 1 /* recursive */);
+	if (!copy)
+		return;
 
-	if (root->children) {
-		check();
-		sXmlAddNextSibling(root->children, copy);
-	} else {
-		check();
-		sXmlAddChildList(root, copy);
-	}
+	xml.num_nodes += get_num_nodes(copy);
+
+	add_node_random(root, copy);
 
 	save_doc(s);
-	xml_deploy(s);
+	deploy();
+}
+
+static
+void
+add_node_random(xmlNode *curr, xmlNode *new)
+{
+	switch (roll_dice(1, 5)) {
+	case 1:
+		sXmlAddChild(curr, new);
+		break;
+
+	case 2:
+		sXmlAddChildList(curr, new);
+		break;
+
+	case 3:
+		sXmlAddNextSibling(curr, new);
+		break;
+
+	case 4:
+		sXmlAddPrevSibling(curr, new);
+		break;
+
+	case 5:
+		sXmlAddSibling(curr, new);
+		break;
+
+	default:
+		panic("wtf");
+	}
 }
 
 static
@@ -187,13 +236,13 @@ do_buffer_overflow(void *data, xmlNode *ptr)
 		return;
 
 	/* 10% chance of testing bof */
-	if (coin_flip(10))
+	if (coin_flip(90))
 		return;
 
 	xml.dummy_char = sXmlStrdup(ptr->name);
 	xmlNodeSetName(ptr, TOXMLCHAR(BIG));
 	save_doc(s);
-	xml_deploy(s);
+	deploy();
 	xmlNodeSetName(ptr, xml.dummy_char);
 	xmlFree(xml.dummy_char);
 	xml.dummy_char = NULL;
@@ -203,7 +252,8 @@ static
 void
 fuzz_buffer_overflow(struct state *s)
 {
-	check();
+	CHECK();
+
 	iterate_xmldoc (
 		sXmlDocGetRootElement(xml.doc),
 		s,
@@ -221,8 +271,8 @@ do_fuzz_tag_attrs(void *data, xmlNodePtr ptr)
 	for (attr = ptr->properties; attr; attr = attr->next) {
 
 		/* 10% chance of testing bof */
-		if (coin_flip(10))
-			return;
+		if (coin_flip(90))
+			continue;
 
 		xml.dummy_char = xmlGetProp(ptr, attr->name);
 		if (!xml.dummy_char)
@@ -230,7 +280,7 @@ do_fuzz_tag_attrs(void *data, xmlNodePtr ptr)
 
 		xmlSetProp(ptr, attr->name, TOXMLCHAR(BIG));
 		save_doc(s);
-		xml_deploy(s);
+		deploy();
 
 		xmlSetProp(ptr, attr->name, xml.dummy_char);
 
@@ -243,7 +293,8 @@ static
 void
 fuzz_tag_attrs(struct state *s)
 {
-	check();
+	CHECK();
+
 	iterate_xmldoc(
 		sXmlDocGetRootElement(xml.doc),
 		s,
@@ -273,16 +324,16 @@ handle_tag_fmt_str(void *data, xmlNode *curr)
 	if (curr->type != XML_ELEMENT_NODE)
 		return;
 
-	if (coin_flip(5))
+	if (coin_flip(90))
 		return;
 
 	xml.dummy_char = sXmlStrdup(curr->name);
 
-	for (uint32_t i = 0; i < ARRSIZE(fmt_strings); i++) {
-		xmlNodeSetName(curr, TOXMLCHAR(fmt_strings[i]));
-		save_doc(s);
-		xml_deploy(s);
-	}
+	const char *fmt = fmt_strings[roll_dice(0, ARRSIZE(fmt_strings)-1)];
+
+	xmlNodeSetName(curr, TOXMLCHAR(fmt));
+	save_doc(s);
+	deploy();
 
 	xmlNodeSetName(curr, xml.dummy_char);
 
@@ -296,20 +347,20 @@ handle_props_fmt_str(void *data, xmlNode *curr)
 {
 	struct state *s = data;
 
-	if (coin_flip(5))
-		return;
-
 	for (xmlAttr *attr = curr->properties; attr; attr = attr->next) {
+
+		if (coin_flip(90))
+			continue; /* yeah nah brah */
 
 		xml.dummy_char = xmlGetProp(curr, attr->name);
 		if (!xml.dummy_char)
 			continue;
 
-		for (uint32_t i = 0; i < ARRSIZE(fmt_strings); i++) {
-			xmlSetProp(curr, attr->name, TOXMLCHAR(fmt_strings[i]));
-			save_doc(s);
-			xml_deploy(s);
-		}
+		const char *fmt = fmt_strings[roll_dice(0, ARRSIZE(fmt_strings)-1)];
+
+		xmlSetProp(curr, attr->name, TOXMLCHAR(fmt));
+		save_doc(s);
+		deploy();
 
 		xmlSetProp(curr, attr->name, xml.dummy_char);
 
@@ -322,23 +373,34 @@ static
 void
 fuzz_tag_fmt_str(struct state *s)
 {
-	check();
-	iterate_xmldoc(sXmlDocGetRootElement(xml.doc), s, handle_tag_fmt_str);
+	CHECK();
+
+	iterate_xmldoc(
+		sXmlDocGetRootElement(xml.doc),
+		s,
+		handle_tag_fmt_str
+	);
 }
 
 static
 void
 fuzz_props_fmt_str(struct state *s)
 {
-	check();
-	iterate_xmldoc(sXmlDocGetRootElement(xml.doc), s, handle_props_fmt_str);
+	CHECK();
+
+	iterate_xmldoc(
+		sXmlDocGetRootElement(xml.doc),
+		s,
+		handle_props_fmt_str
+	);
 }
 
 static
 void
 fuzz_big_print(struct state *s)
 {
-	check();
+	CHECK();
+
 	off_t bytes = 0;
 	uint64_t niters;
 	int ret;
@@ -347,11 +409,9 @@ fuzz_big_print(struct state *s)
 	if (roll_dice(1, 10000) == 10)
 		return;
 
-	check();
-
 	slseek(s->payload_fd, 0, SEEK_SET);
 
-	for (niters = roll_dice(100, 10000); niters; niters--) {
+	for (niters = roll_dice(100, 1000); niters; niters--) {
 
 		ret = xmlSaveDoc(xml.ctx, xml.doc);
 		if (ret == -1)
@@ -359,7 +419,7 @@ fuzz_big_print(struct state *s)
 
 		ret = xmlSaveFlush(xml.ctx);
 		if (ret == -1)
-			panic("Failed to flush xml doc");
+			break;
 
 		/* comp6447 makes me scared of type casting ints */
 		bytes += (off_t) ret;
@@ -367,7 +427,7 @@ fuzz_big_print(struct state *s)
 
 	sftruncate(s->payload_fd, (off_t) bytes);
 
-	xml_deploy(s);
+	deploy();
 }
 
 static
@@ -381,30 +441,7 @@ insert_node(void *data, xmlNode *curr)
 		return;
 
 	if (*index == 0) {
-		switch (roll_dice(1, 5)) {
-		case 1:
-			sXmlAddChild(curr, *new);
-			break;
-
-		case 2:
-			sXmlAddChildList(curr, *new);
-			break;
-
-		case 3:
-			sXmlAddNextSibling(curr, *new);
-			break;
-
-		case 4:
-			sXmlAddPrevSibling(curr, *new);
-			break;
-
-		case 5:
-			sXmlAddSibling(curr, *new);
-			break;
-
-		default:
-			panic("wtf");
-		}
+		add_node_random(curr, *new);
 
 		/* Clear *new to indicate the node has been inserted */
 		*new = NULL;
@@ -431,16 +468,20 @@ get_node(void *data, xmlNode *curr)
 
 static
 void
-fuzz_populate(UNUSED struct state *s)
+fuzz_populate(struct state *s)
 {
-	check();
+	CHECK();
+
 	void *args[2];
 	xmlNode *curr = NULL;
 	uint64_t index;
 
-	for (int i = 0; i < 20; i++) {
+	if (xml.num_nodes <= 2)
+		return; /* not enough nodes */
 
-		index = roll_dice(0, xml.num_nodes-1);
+	for (uint64_t i = 0; i < 20; i++) {
+
+		index = roll_dice(1, xml.num_nodes-1);
 
 		args[0] = &index; /* Argument: uint64_t* */
 		args[1] = &curr;  /* Return value: xmlNode** */
@@ -471,14 +512,14 @@ fuzz_populate(UNUSED struct state *s)
 
 		if (copy) {
 			/* The node was not inserted for some reason */
-			xmlFree(copy);
+			xmlFreeNode(copy);
 			return;
 		}
 
 		xml.num_nodes += new_num_nodes;
 
 		save_doc(s);
-		xml_deploy(s);
+		deploy();
 	}
 }
 
@@ -486,7 +527,7 @@ static
 void
 fuzz_refresh(struct state *s)
 {
-	check();
+	CHECK();
 
 	xmlFreeDoc(xml.doc);
 
@@ -533,7 +574,7 @@ save_doc(struct state *s)
 	/* Why tf does this reutrn an int??? */
 	bytes = xmlSaveFlush(xml.ctx);
 	if (bytes == -1)
-		panic("Failed to flush xml doc");
+		return 0; /* should throw an error but what ever */
 
 	return bytes;
 }
@@ -608,23 +649,213 @@ sXmlAddSibling(xmlNodePtr cur, xmlNodePtr elem)
 	return ret;
 }
 
-/* The victim program usuall aborts() if there is can error. It's likely that
- * if we keep mutating input then it will keep aborting, therefore we start
- * fresh stop wasting time */
 static
 void
-xml_deploy(struct state *s)
+handle_props_bad_ints(void *data, xmlNode *curr)
 {
-	int wstatus = deploy();
-	if (WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGABRT) {
+	struct state *s = data;
 
-		/* 10% chance to refresh */
-		if (coin_flip(10)) {
-			fuzz_refresh(s);
+	for (xmlAttr *attr = curr->properties; attr; attr = attr->next) {
+
+		if (coin_flip(90))
+			continue; /* yeah nah brah */
+
+		xml.dummy_char = xmlGetProp(curr, attr->name);
+		if (!xml.dummy_char)
+			continue;
+
+		if (!isint0((const char *) xml.dummy_char)) {
+			xmlFree(xml.dummy_char);
+			xml.dummy_char = NULL;
+			continue;
 		}
+
+		for (uint64_t i = 0; i < ARRSIZE(bad_nums); i++) {
+
+			const char *str = bad_nums[i].s;
+
+			xmlSetProp(curr, attr->name, TOXMLCHAR(str));
+			save_doc(s);
+			deploy();
+		}
+
+		xmlSetProp(curr, attr->name, xml.dummy_char);
+
+		xmlFree(xml.dummy_char);
+		xml.dummy_char = NULL;
 	}
 }
 
+static
+void
+fuzz_props_bad_ints(struct state *s)
+{
+	CHECK();
+
+	iterate_xmldoc(
+		sXmlDocGetRootElement(xml.doc),
+		s,
+		handle_props_bad_ints
+	);
+}
+
+static
+void
+handle_cont_bof(void *data, xmlNode *curr)
+{
+	struct state *s = data;
+
+	if (curr->type != XML_TEXT_NODE)
+		return;
+
+	if (coin_flip(90))
+		return;
+
+	xml.dummy_char = xmlNodeGetContent(curr);
+
+	xmlNodeSetContent(curr, TOXMLCHAR(BIG));
+	save_doc(s);
+	deploy();
+
+	xmlNodeSetContent(curr, xml.dummy_char);
+	xmlFree(xml.dummy_char);
+	xml.dummy_char = NULL;
+}
+
+static
+void
+hanlde_cont_bad_ints(void *data, xmlNode *curr)
+{
+	struct state *s = data;
+
+	if (curr->type != XML_TEXT_NODE)
+		return;
+
+	if (coin_flip(90))
+		return;
+
+	xml.dummy_char = xmlNodeGetContent(curr);
+
+	if (!isint0((const char *) xml.dummy_char)) {
+		xmlFree(xml.dummy_char);
+		xml.dummy_char = NULL;
+		return;
+	}
+
+	for (uint64_t i = 0; i < ARRSIZE(bad_nums); i++) {
+		const char *num = bad_nums[i].s;
+
+		xmlNodeSetContent(curr, TOXMLCHAR(num));
+		save_doc(s);
+		deploy();
+	}
+
+	xmlNodeSetContent(curr, xml.dummy_char);
+	xmlFree(xml.dummy_char);
+	xml.dummy_char = NULL;
+}
+
+static
+void
+handle_cont_fmt(void *data, xmlNode *curr)
+{
+	struct state *s = data;
+
+	if (curr->type != XML_TEXT_NODE)
+		return;
+
+	if (coin_flip(90))
+		return;
+
+	xml.dummy_char = xmlNodeGetContent(curr);
+
+	const char *fmt = fmt_strings[roll_dice(0, ARRSIZE(fmt_strings)-1)];
+
+	xmlNodeSetContent(curr, TOXMLCHAR(fmt));
+	save_doc(s);
+	deploy();
+
+	xmlNodeSetContent(curr, xml.dummy_char);
+	xmlFree(xml.dummy_char);
+	xml.dummy_char = NULL;
+}
+
+static
+void
+fuzz_cont_fmt(struct state *s)
+{
+	CHECK();
+
+	iterate_xmldoc(
+		sXmlDocGetRootElement(xml.doc),
+		s,
+		handle_cont_fmt
+	);
+}
+
+static
+void
+fuzz_cont_bof(struct state *s)
+{
+	CHECK();
+
+	iterate_xmldoc(
+		sXmlDocGetRootElement(xml.doc),
+		s,
+		handle_cont_bof
+	);
+}
+
+static
+void
+fuzz_cont_bad_ints(struct state *s)
+{
+	CHECK();
+
+	iterate_xmldoc(
+		sXmlDocGetRootElement(xml.doc),
+		s,
+		hanlde_cont_bad_ints
+	);
+}
+
+static
+void
+fuzz_rnd_shift(struct state *s)
+{
+	CHECK();
+
+	uint32_t bytes, start_range;
+
+	bytes = save_doc(s);
+	if (bytes <= 32) {
+		bit_shift_in_range(s->payload_fd, 0, 32);
+		return;
+	}
+
+	start_range = roll_dice(0, bytes-32);
+	bit_shift_in_range(s->payload_fd, start_range, 32);
+}
+
+static
+void
+fuzz_rnd_flip(struct state *s)
+{
+	CHECK();
+
+	uint32_t bytes, start_range;
+
+	bytes = save_doc(s);
+	if (bytes <= 32) {
+		bit_shift_in_range(s->payload_fd, 0, 32);
+		return;
+	}
+
+	start_range = roll_dice(0, bytes-32);
+	bit_flip_in_range(s->payload_fd, start_range, 32);
+}
+
+/* Only used for debugging */
 UNUSED
 static
 const char *

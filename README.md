@@ -20,6 +20,16 @@ tar -xf fuzzer.tar
 | Fuzzing `json1` without fork server                  | 11415   |
 | Fuzzing `json1` with fork server                     | 16537   |
 
+# Results
+
+The results after running a few tests
+
+| name   | wins | attempts |
+|--------|------|----------|
+| `xml1` | 99   | 100      |
+| `xml2` | 69   | 78       |
+| `xml3` | 0    | 0        |
+
 # Shared libs
 
 - [csv\_parser](https://github.com/semitrivial/csv_parser)

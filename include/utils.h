@@ -81,9 +81,12 @@ UNUSED static const char *fmt_strings[] = {
 /* Return true if string matches regex: `[+-]?[0-9][0-9]*` */
 bool isint(const char *s, uint64_t len);
 
+/* The same as isint() but for a null terminated string */
+bool isint0(const char *s);
+
 /* Generate a random number between `lo` and `hi` inclusive.
  * For example: roll_dice(2, 4) -> {2, 3, 4} */
-uint64_t roll_dice(uint64_t lo, uint64_t hi); /* TODO functions calling this function need to be updated */
+uint64_t roll_dice(uint64_t lo, uint64_t hi);
 
 /* Flip a bias coin. The bias is between zero and 100. This is done by
  * generating a random number. If the rand number is less than the bias

@@ -9,9 +9,63 @@
 
 # How The Fuzzer Works
 
+1. Detect the input file type (it should be csv, xml, json, or plain text).
+2. The fuzzer is split into four components (one for each file type). Invoke
+   the part of the fuzzer responsible for fuzzing the given file type.
+3. The fuzzer will mutate the given input
+4. Feed the mutated input into the target binary
+5. If the target did not crash because of a SIGSEGV signal, then continue from
+   step 3.
+6. Store the payload in the corrent working directory in a file called
+   `bad.txt`
+7. Prevent memory leaks by freeing all used memory and temporary files
+
 # What kind of bugs the fuzzer can find
 
+The fuzzer is split into four different components, one for each file type and
+is optimised to look for particular bugs depending on the four file types.
+
+## CSV
+
+TODO
+
+## Json
+
+TODO
+
+## XML
+
+- Buffer overflow in the tag names
+- Buffer overflow in the tag properties
+- Buffer overflow in the data between two tags
+- Format strings in tag names
+- Format strings in tag properties
+- Integer overflow/underflow in tag properties
+- Integer overflow/underflow in data between two tags
+- Memory corruption from non-printable characters
+- General errors from mishandling tags that are in the wrong order
+
+## Plain Text
+
+TODO
+
 # Possible Improvements
+
+- __Multi-threading__: This would provide a large performance boost. Currently
+  the fuzzer only uses a single cpu while most other cpu's are idle. Only a few
+  data structures would need to be shared which would result in little
+  synchronization overhead.
+- __Chaining fuzzing stratagies__: Most fuzzing stratagies within the fuzzer
+  test for a single bug at a time. A possible improvement would be testing a
+  few possible bug classes together, for example:
+  - Buffer overflow in one field and integer overflow in another
+  - Buffer overflow in two seperate fields
+- __Modifying control data__: This fuzzer excels at mutating data inside
+  certain parts of the payload, since the libraries used to parse and modify
+  the data structures provide a simple to use API. However, only a few
+  stratagies focus on fuzzing control data (e.g. `<` and `>` for XML, `{` and
+  `}` for Json). One possible improvement is to mutate pairs of control
+  characters in the input, for example: `<` and `>` characters for a XML tag.
 
 # Bonus Marks
 
