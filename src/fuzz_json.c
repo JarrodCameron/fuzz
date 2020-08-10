@@ -404,58 +404,30 @@ fuzz_extra_objects(struct state *s)
 	}
 	strcat(entry, ending);
 
-	printf ("entry: '%s' (%d characters)\n", entry, strlen(entry));
-
 	// Creating repeats of the string
 	char * object = smalloc(110*total);
 
-	for (uint32_t i = 0; i < 5; i++) {
+	for (uint32_t i = 0; i < 100; i++) {
 		strcat(object, entry);
 		strcat(object, ", ");
 	}
 	strcat(object, entry);
-	printf ("object: \n'%s' (%d characters)\n", object, strlen(object));
 	
 	char * final = smalloc(strlen(buf2) + strlen(object) + 100);
 	strcat(final, buf2);
 	strcat(final, ", ");
 	strcat(final, object);
 
-	printf ("final: \n'%s' (%d characters)\n", final, strlen(final));
-
-	json.jv = final;
+	json_value * new = json_parse (final, strlen(final));
+	json.jv = new;
 
 	json_dump(s);
 	deploy();
 
-
-
-    /*char * buf = malloc(json_measure(json.jv));
+	json.jv = new_jv;
+	buf = malloc(json_measure(json.jv));
     json_serialize(buf, json.jv);
-    printf("json.jv old: %s\n", buf);
-	
-
-    buf = malloc(json_measure(json.jv));
-    json_serialize(buf, json.jv);
-    printf("json.jv new: %s\n", buf);*/
-
-	// restoring json.jv
-	//json.jv = new_jv;
-
+    printf("json.jv: %s\n", buf);
 
 }
 
-
-	
-	
-	/*json_dump(s);
-	deploy();
-
-	// Only restore the original entries
-	json_value *new_jv = json_object_new(json.jv->u.object.length);
-	for (unsigned int i = 0; i < length; i++) {
-		json_object_entry *entry = &(json.jv->u.object.values[i]);
-		json_object_push(new_jv, entry->name, entry->value);
-	}*/
-
-	
