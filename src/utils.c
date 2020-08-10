@@ -56,6 +56,7 @@ isint0(const char *s)
 uint64_t
 roll_dice(uint64_t lo, uint64_t hi)
 {
+	
 	return (rand() % (hi - lo + 1)) + lo;
 }
 

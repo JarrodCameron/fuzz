@@ -155,10 +155,7 @@ int number_end_offset(char* file_string, int file_string_len) {
 	}
 
 	while(num_length < file_string_len) {
-		// printf("Checking char: %c\n", file_string[num_length]);
-		// printf("num_length = %d < file_string_len = %d\n", num_length, file_string_len);
 		if (valid_num_char(file_string[num_length]) == FALSE) {
-			// printf("Char is no valid\n");
 			if (file_string[num_length] == decimal_point && decimal_point_detected == FALSE) {
 				decimal_point_detected = TRUE;
 				num_length++;
@@ -172,7 +169,6 @@ int number_end_offset(char* file_string, int file_string_len) {
 		}
 
 	}
-	// printf("Finished checking\n");
 	return num_length;
 
 
@@ -183,17 +179,11 @@ void write_int_number(int fd, int byte_offset, char* file_contents, int num_leng
 
 	//replace with -1
 	lseek(fd, byte_offset, SEEK_SET);
-	// printf("Num_length = %d\n", num_length);
-	// printf("File contents[num_length] = %s\n", (file_contents+num_length));
 	int new_number_length = snprintf( NULL, 0, "%ld", number );
-	// printf("New number length = %d\n", new_number_length);
 	char * quick_string = calloc((new_number_length+1),sizeof(char));
 	snprintf( quick_string, new_number_length+1, "%ld", number);
-	// printf("Quick string is: %s\n", quick_string);
 	write(fd, quick_string, new_number_length); //Does not include null terminator
-	// printf("String is: %s\n",&file_contents[num_length]);
 	write(fd, &file_contents[num_length], file_len-byte_offset-num_length);
-	// printf("Trucating at char num %d\n", file_len+new_number_length - num_length);
 	ftruncate(fd,file_len+new_number_length - num_length);
 
 	deploy();
@@ -210,15 +200,10 @@ void write_float_number(int fd, int byte_offset, char* file_contents, int num_le
 
 	//replace with -1
 	lseek(fd, byte_offset, SEEK_SET);
-	// printf("Num_length = %d\n", num_length);
-	// printf("File contents[num_length] = %s\n", (file_contents+num_length));
 	int new_number_length = snprintf( NULL, 0, "%g", number );
-	// printf("New number length = %d\n", new_number_length);
 	char * quick_string = calloc((new_number_length+1),sizeof(char));
 	snprintf( quick_string, new_number_length+1, "%g", number);
-	// printf("Quick string is: %s\n", quick_string);
 	write(fd, quick_string, new_number_length); //Does not include null terminator
-	// printf("String is: %s\n",&file_contents[num_length]);
 	write(fd, &file_contents[num_length], file_len-byte_offset-num_length);
 	ftruncate(fd,file_len+new_number_length - num_length);
 

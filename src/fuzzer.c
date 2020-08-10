@@ -103,6 +103,7 @@ exit_fuzzer(void)
 	if (free_handles[system_state.ft] != NULL)
 		free_handles[system_state.ft](&system_state);
 
+
 	/* Signal that we are done */
 	swrite(CMD_FD, CMD_QUIT, sizeof(CMD_QUIT)-1);
 
@@ -145,6 +146,7 @@ main(int argc, char **argv, char **envp)
 	init_state(argv[1], argv[2], envp);
 
 	system_state.ft = detect_file(system_state.input_file);
+
 
 	fuzz_handles[system_state.ft](&system_state);
 
