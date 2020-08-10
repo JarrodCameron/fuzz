@@ -36,17 +36,24 @@ static void fuzz_bad_nums(struct state *s);
 static void traverse_json_object(json_value *, joe_handle, jv_handle);
 static void traverse_json_array(json_value *, joe_handle, jv_handle);
 static void fuzz_fmt_str(struct state *s);
+static void fuzz_bit_shift(struct state *s);
 static void fuzz_empty(struct state *s);
-//static void fuzz_bit_shift(struct state *s);
+static void fuzz_extra_entries(struct state *s);
+static json_value * copy_entries(json_value * new, json_value * old);
 
-/* Here we add functions used for fuzzing.
- * Each function tests for something different. */
-static void (*fuzz_payloads[])(struct state *) = {
+/* Here are the functions that can be run multiple times and
+   do different things each time. */
+static void (*fuzz_payloads_repeat[])(struct state *) = {
+	fuzz_bit_shift,
+};
+
+/* Here are the functions that should be only run once */
+static void (*fuzz_payloads_single[])(struct state *) = {
 	fuzz_buffer_overflow,
 	fuzz_bad_nums,
 	fuzz_fmt_str,
-	//fuzz_bit_shift,
 	fuzz_empty,
+	fuzz_extra_entries,
 };
 
 void
@@ -81,9 +88,13 @@ void
 fuzz(struct state *s)
 {
 
+	for (uint32_t i = 0; i < ARRSIZE(fuzz_payloads_single); i++) {
+		fuzz_payloads_single[i](s);
+	}
+
 	while (1) {
-		uint32_t idx = roll_dice(0, ARRSIZE(fuzz_payloads)-1);
-		fuzz_payloads[idx](s);
+		uint32_t idx = roll_dice(0, ARRSIZE(fuzz_payloads_repeat)-1);
+		fuzz_payloads_repeat[idx](s);
 	}
 }
 
@@ -199,6 +210,17 @@ fuzz_bad_nums(struct state *s)
 
 				jv->u.integer = old_int;
 			}
+		} else if (jv->type == json_double) {
+			for (uint32_t i = 0; i < ARRSIZE(bad_nums_floats); i++) {
+				double old_double = jv->u.dbl;
+
+				jv->u.dbl = bad_nums_floats[i].n;
+
+				json_dump(s);
+				deploy();
+
+				jv->u.dbl = old_double;
+			}
 		}
 	}
 	traverse_json(json.jv, NULL, &f);
@@ -254,12 +276,39 @@ fuzz_fmt_str(struct state *s)
 	traverse_json(json.jv, &f2, NULL);
 }
 
+static
+void
+fuzz_bit_shift(struct state *s)
+{
+	size_t offset, len = json_dump(s);
+
+	for (size_t i = 0; i < len; i++) {
+		char ch = json.mem[i];
+
+		switch (ch) {
+		case '\\':
+		case '\n':
+		case '"':
+		case ',':
+		case '/':
+		case ':':
+		case '[':
+		case ']':
+		case '{':
+		case '}':
+			offset = i + roll_dice(1, 10); /* Fuzz some neighbouring bytes */
+			offset = MIN(offset, len); /* Don't want to fuzz past the file */
+			bit_shift_in_range(s->payload_fd, i, offset-i);
+			break;
+		}
+	}
+}
+
 /*Zero out and empty entries and values*/
 static
 void
 fuzz_empty(struct state *s)
 {
-	/* Set entries to NULL */
 	void
 	f3(json_object_entry *entry)
 	{
@@ -287,5 +336,31 @@ fuzz_empty(struct state *s)
 	traverse_json(json.jv, &f3, NULL);
 }
 
+/*Create extra entries*/
+static
+void
+fuzz_extra_entries(struct state *s)
+{
+	json_value *new_jv = json_object_new(json.jv->u.object.length);
+	new_jv = copy_entries(new_jv, json.jv);
+	json_object_push(new_jv, "extra", json_string_new ("extra_value"));
 
+	json_dump(s);
+	deploy();
 
+	//json_value_free(new_jv);
+}
+
+//Copy entries from old across to new
+static
+json_value * 
+copy_entries(json_value * new, json_value * old) {
+	void
+	f4(json_object_entry *entry)
+	{
+		json_object_push(new, entry->name, entry->value);
+	}
+	
+	traverse_json(json.jv, &f4, NULL);
+	return new;
+}
