@@ -40,7 +40,7 @@ static void fuzz_bit_shift(struct state *s);
 static void fuzz_empty(struct state *s);
 static void fuzz_extra_entries(struct state *s);
 static json_value * copy_entries();
-static void fuzz_swap_value(struct state *s);
+//static void fuzz_swap_value(struct state *s);
 static void fuzz_extra_objects(struct state *s);
 //static json_value * append_objects(json_value *new, json_value *old);
 
@@ -56,9 +56,9 @@ static void (*fuzz_payloads_single[])(struct state *) = {
 	//fuzz_bad_nums,
 	//fuzz_fmt_str,
 	//fuzz_empty,
-	fuzz_extra_entries,
+	//fuzz_extra_entries,
 	//fuzz_swap_value,	
-	//fuzz_extra_objects,
+	fuzz_extra_objects,
 };
 
 void
@@ -356,7 +356,7 @@ fuzz_extra_entries(struct state *s)
 
 	// Only restore the original entries
 	json_value *new_jv = json_object_new(json.jv->u.object.length);
-	for (unsigned int i = 0; i < length; i++) {
+	for (uint32_t i = 0; i < length; i++) {
 		json_object_entry *entry = &(json.jv->u.object.values[i]);
 		json_object_push(new_jv, entry->name, entry->value);
 	}
@@ -366,89 +366,96 @@ fuzz_extra_entries(struct state *s)
 
 }
 
-//Copy entries from json.jv across to new
-static
-json_value * 
-copy_entries() {
-	json_value *new = json_object_new(json.jv->u.object.length);
-	void
-	f4(json_object_entry *entry)
-	{
-		if (entry->name != "extra") {
-			printf("entry name is f4: %s\n", entry->name);
-			json_object_push(new, entry->name, entry->value);
-		}
-	}
-	
-	traverse_json(json.jv, &f4, NULL);
-	return new;
-}
-
-/*Swap a value in an entry */
-static
-void
-fuzz_swap_value(struct state *s)
-{
-	void
-	f5(json_object_entry *entry)
-	{
-		json_char *old_name = entry->name;
-		json_value *old_value = entry->value;
-
-		printf("entry->name is %s\n", entry->name);
-		printf("entry->value type was: %d\n", entry->value->type);
-
-		char * buf = malloc(json_measure(entry->value));
-		json_serialize(buf, entry->value);
-		printf("old: %s\n", buf);
-		
-		/*char * buf2 = malloc(json_measure(old_value));
-		json_serialize(buf, old_value);
-		printf("old_value: %s\n", buf);*/
-
-		// Just swap to either string or integer for simplicity
-		if (entry->value->type == json_integer) {
-			entry->value = json_string_new("changed");
-			printf("entry->value is %s\n", entry->value);
-			printf("entry->value->type is %d\n", entry->value->type);
-		} else if (entry->value->type == json_string){
-			entry->value = json_integer_new(0);
-		}
-		json_serialize(buf, entry->value);
-		printf("new: %s\n", buf);
-
-		json_dump(s);
-		deploy();
-
-		entry->value = old_value;
-		json_serialize(buf, entry->value);
-		printf("new: %s\n", buf);
-	}
-	traverse_json(json.jv, &f5, NULL);
-}
-
 /*Append extra objects*/
 static
 void
 fuzz_extra_objects(struct state *s)
 {
-	json_value *new1 = copy_entries();
-	char * buf = malloc(json_measure(new1));
-	json_serialize(buf, new1);
-	printf("old: %s\n", buf);
+	uint32_t length = json.jv->u.object.length;
+	printf("length %d\n", length);
+	// Initial copy
+	json_value *new_jv = json_object_new(length);
+	for (uint32_t i = 0; i < length; i++) {
+		json_object_entry *entry = &(json.jv->u.object.values[i]);
+		json_object_push(new_jv, entry->name, entry->value);
+	}
 
-	buf = malloc(json_measure(new1));
-	json_serialize(buf, new1);
-	printf("new: %s\n", buf);
+	char * buf = malloc(json_measure(json.jv));
+    json_serialize(buf, json.jv);
+    printf("json.jv: %s\n", buf);
 
+	char * buf2 = malloc(json_measure(new_jv));
+    json_serialize(buf2, new_jv);
+    printf("new_jv: %s\n", buf2);
+
+	// Creating 1 string
+	char * beginning = "{ \"begin\": 0,";
+	char * addition = " \"ex\": 1,";
+	char * ending = " \"end\": 2 }";
+	
+	uint32_t total = strlen(beginning) + (length-2)*strlen(addition) + strlen(ending);
+	printf("%d\n", total);
+
+	char * entry = smalloc(total); 
+	sprintf(entry, "%s", beginning);
+
+	for (uint32_t i = 0; i < length-2; i++) {
+		strcat(entry, addition);
+	}
+	strcat(entry, ending);
+
+	printf ("entry: '%s' (%d characters)\n", entry, strlen(entry));
+
+	// Creating repeats of the string
+	char * object = smalloc(110*total);
+
+	for (uint32_t i = 0; i < 5; i++) {
+		strcat(object, entry);
+		strcat(object, ", ");
+	}
+	strcat(object, entry);
+	printf ("object: \n'%s' (%d characters)\n", object, strlen(object));
+	
+	char * final = smalloc(strlen(buf2) + strlen(object) + 100);
+	strcat(final, buf2);
+	strcat(final, ", ");
+	strcat(final, object);
+
+	printf ("final: \n'%s' (%d characters)\n", final, strlen(final));
+
+	json.jv = final;
 
 	json_dump(s);
 	deploy();
-}
-//Copy entries from old across to new
-/*static
-json_value * 
-append_objects(json_value *new, json_value *old) {
+
+
+
+    /*char * buf = malloc(json_measure(json.jv));
+    json_serialize(buf, json.jv);
+    printf("json.jv old: %s\n", buf);
 	
-	return new;
-}*/
+
+    buf = malloc(json_measure(json.jv));
+    json_serialize(buf, json.jv);
+    printf("json.jv new: %s\n", buf);*/
+
+	// restoring json.jv
+	//json.jv = new_jv;
+
+
+}
+
+
+	
+	
+	/*json_dump(s);
+	deploy();
+
+	// Only restore the original entries
+	json_value *new_jv = json_object_new(json.jv->u.object.length);
+	for (unsigned int i = 0; i < length; i++) {
+		json_object_entry *entry = &(json.jv->u.object.values[i]);
+		json_object_push(new_jv, entry->name, entry->value);
+	}*/
+
+	
