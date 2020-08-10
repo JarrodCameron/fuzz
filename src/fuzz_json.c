@@ -52,12 +52,12 @@ static void (*fuzz_payloads_repeat[])(struct state *) = {
 /* Here are the functions that should be only run once */
 static void (*fuzz_payloads_single[])(struct state *) = {
 	fuzz_buffer_overflow,
-	fuzz_bad_nums,
-	fuzz_fmt_str,
-	fuzz_empty,
-	fuzz_extra_entries,
-	//fuzz_extra_objects,
-	fuzz_swap_value,	
+	//fuzz_bad_nums,
+	//fuzz_fmt_str,
+	//fuzz_empty,
+	//fuzz_extra_entries,
+	fuzz_extra_objects,
+	//fuzz_swap_value,	
 };
 
 void
@@ -371,7 +371,6 @@ void
 fuzz_extra_objects(struct state *s)
 {
 	uint32_t length = json.jv->u.object.length;
-	printf("length %d\n", length);
 	// Initial copy
 	json_value *new_jv = json_object_new(length);
 	for (uint32_t i = 0; i < length; i++) {
@@ -379,55 +378,43 @@ fuzz_extra_objects(struct state *s)
 		json_object_push(new_jv, entry->name, entry->value);
 	}
 
-	char * buf = malloc(json_measure(json.jv));
-    json_serialize(buf, json.jv);
-    printf("json.jv: %s\n", buf);
-
 	char * buf2 = malloc(json_measure(new_jv));
     json_serialize(buf2, new_jv);
-    printf("new_jv: %s\n", buf2);
+    //printf("new_jv: %s\n", buf2);
 
-	// Creating 1 string
-	char * beginning = "{ \"begin\": 0,";
-	char * addition = " \"ex\": 1,";
-	char * ending = " \"end\": 2 }";
-	
-	uint32_t total = strlen(beginning) + (length-2)*strlen(addition) + strlen(ending);
-	printf("%d\n", total);
-
-	char * entry = smalloc(total); 
-	sprintf(entry, "%s", beginning);
-
-	for (uint32_t i = 0; i < length-2; i++) {
-		strcat(entry, addition);
+	char * final = smalloc(105*strlen(buf2));
+	strcat(final, "[");
+	for (uint32_t i = 0; i < 99; i++) {
+		strcat(final, buf2);
+		strcat(final, ", ");
 	}
-	strcat(entry, ending);
-
-	// Creating repeats of the string
-	char * object = smalloc(110*total);
-
-	for (uint32_t i = 0; i < 100; i++) {
-		strcat(object, entry);
-		strcat(object, ", ");
-	}
-	strcat(object, entry);
 	
-	char * final = smalloc(strlen(buf2) + strlen(object) + 100);
 	strcat(final, buf2);
-	strcat(final, ", ");
-	strcat(final, object);
+	strcat(final, "]");
 
-	json_value * new = json_parse (final, strlen(final));
+	// Initialising new parser
+	json_settings settings = {};
+	settings.value_extra = json_builder_extra;
+	char err[json_error_max];
+	json_value * new = json_parse_ex(&settings, final, strlen(final), err);
+	if (new == NULL)
+		panic("Failed to init json parser for new\n");
+
+	json.memlen = (json_measure(new) + sizeof(BIG)) * 5;
+	json.mem = smalloc(json.memlen);
+
+	json_serialize(json.mem, new);
+
 	json.jv = new;
+	char * buf = malloc(json_measure(json.jv));
+    json_serialize(buf, json.jv);
+    //printf("json.jv: %s\n", buf);
 
 	json_dump(s);
 	deploy();
 
+	// restoring json.jv
 	json.jv = new_jv;
-	buf = malloc(json_measure(json.jv));
-    json_serialize(buf, json.jv);
-    printf("json.jv: %s\n", buf);
-
 }
 
 /*Swap a value in an entry */
