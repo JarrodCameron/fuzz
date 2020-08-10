@@ -40,7 +40,7 @@ static void fuzz_bit_shift(struct state *s);
 static void fuzz_empty(struct state *s);
 static void fuzz_extra_entries(struct state *s);
 static json_value * copy_entries();
-//static void fuzz_swap_value(struct state *s);
+static void fuzz_swap_value(struct state *s);
 static void fuzz_extra_objects(struct state *s);
 //static json_value * append_objects(json_value *new, json_value *old);
 
@@ -57,8 +57,8 @@ static void (*fuzz_payloads_single[])(struct state *) = {
 	//fuzz_fmt_str,
 	//fuzz_empty,
 	//fuzz_extra_entries,
-	//fuzz_swap_value,	
-	fuzz_extra_objects,
+	//fuzz_extra_objects,
+	fuzz_swap_value,	
 };
 
 void
@@ -429,5 +429,48 @@ fuzz_extra_objects(struct state *s)
     json_serialize(buf, json.jv);
     printf("json.jv: %s\n", buf);
 
+}
+
+/*Swap a value in an entry */
+static
+void
+fuzz_swap_value(struct state *s)
+{
+	void
+	f4(json_object_entry *entry)
+	{
+		json_char *old_name = entry->name;
+		json_value *old_value = entry->value;
+
+		printf("entry->name is %s\n", entry->name);
+		printf("entry->value type was: %d\n", entry->value->type);
+
+		char * buf = malloc(json_measure(entry->value));
+		json_serialize(buf, entry->value);
+		printf("old: %s\n", buf);
+		
+		/*char * buf2 = malloc(json_measure(old_value));
+		json_serialize(buf, old_value);
+		printf("old_value: %s\n", buf);*/
+
+		// Just swap to either string or integer for simplicity
+		if (entry->value->type == json_integer) {
+			entry->value = json_string_new("changed");
+			//printf("entry->value is %s\n", entry->value);
+			printf("entry->value->type is %d\n", entry->value->type);
+		} else if (entry->value->type == json_string){
+			entry->value = json_integer_new(0);
+		}
+		json_serialize(buf, entry->value);
+		printf("new: %s\n", buf);
+
+		json_dump(s);
+		deploy();
+
+		entry->value = old_value;
+		json_serialize(buf, entry->value);
+		printf("new: %s\n", buf);
+	}
+	traverse_json(json.jv, &f4, NULL);
 }
 
