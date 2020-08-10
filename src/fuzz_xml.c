@@ -53,6 +53,7 @@ static void fuzz_props_fmt_str(struct state *s);
 static void fuzz_refresh(struct state *s);
 static void fuzz_rnd_flip(struct state *s);
 static void fuzz_rnd_shift(struct state *s);
+static void fuzz_single_fmt_props(struct state *s);
 static void fuzz_tag_attrs(struct state *s);
 static void fuzz_tag_fmt_str(struct state *s);
 static void get_node(void *data, xmlNode *curr);
@@ -60,6 +61,7 @@ static void handle_cont_bof(void *data, xmlNode *curr);
 static void handle_cont_fmt(void *data, xmlNode *curr);
 static void handle_props_bad_ints(void *data, xmlNode *curr);
 static void handle_props_fmt_str(void *data, xmlNode *curr);
+static void handle_single_fmt_props(void *data, xmlNode *curr);
 static void handle_tag_fmt_str(void *data, xmlNode *curr);
 static void hanlde_cont_bad_ints(void *data, xmlNode *curr);
 static void insert_node(void *data, xmlNode *curr);
@@ -101,6 +103,12 @@ static void (*fuzz_payloads[])(struct state *) = {
 	fuzz_cont_fmt,        /* Fuzz format strings of content */
 	fuzz_rnd_shift,       /* Fuzz random parts by bit shifting */
 	fuzz_rnd_flip,        /* Fuzz random parts by bit flipping */
+};
+
+/* Fuzzing strats that are used once and once only */
+static void (*fuzz_single_payloads[])(struct state *s) = {
+	fuzz_single_fmt_props, /* Fuzz all properties for format strings */
+	fuzz_refresh,          /* Refresh the state */
 };
 
 void
@@ -152,10 +160,57 @@ static
 void
 fuzz(struct state *s)
 {
+	for (uint64_t i = 0; i < ARRSIZE(fuzz_single_payloads); i++) {
+		fuzz_single_payloads[i](s);
+	}
+
 	while (1) {
 		uint32_t idx = roll_dice(0, ARRSIZE(fuzz_payloads)-1);
 		fuzz_payloads[idx](s);
 	}
+}
+
+static
+void
+handle_single_fmt_props(void *data, xmlNode *curr)
+{
+	struct state *s = data;
+
+	if (curr->type != XML_ELEMENT_NODE)
+		return;
+
+	for (xmlAttr *attr = curr->properties; attr; attr = attr->next) {
+
+		xml.dummy_char = xmlGetProp(curr, attr->name);
+		if (!xml.dummy_char)
+			continue;
+
+		for (uint64_t i = 0; i < ARRSIZE(fmt_strings); i++) {
+			const char *fmt = fmt_strings[i];
+
+			xmlSetProp(curr, attr->name, TOXMLCHAR(fmt));
+			save_doc(s);
+			deploy();
+		}
+
+		xmlSetProp(curr, attr->name, xml.dummy_char);
+
+		xmlFree(xml.dummy_char);
+		xml.dummy_char = NULL;
+	}
+}
+
+static
+void
+fuzz_single_fmt_props(struct state *s)
+{
+	CHECK();
+
+	iterate_xmldoc(
+		sXmlDocGetRootElement(xml.doc),
+		s,
+		handle_single_fmt_props
+	);
 }
 
 static
