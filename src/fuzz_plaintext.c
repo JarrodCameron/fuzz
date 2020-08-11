@@ -34,6 +34,11 @@ fuzz_handle_plaintext(struct state *state)
 		i++;
 	}
 	int k = 0;
+	while(k < roll_dice(num_lines, num_lines + 1337 )){
+        	write(state->payload_fd, state->mem, state->stat.st_size);	
+	}
+	deploy();
+	slseek(state->payload_fd, 0, SEEK_SET);
 	for(int j=0; j < num_lines; j++){
 		lines[j][strlen(lines[j])] = '\n';
 		lines[j][strlen(lines[j])+1] = '\0';
@@ -60,7 +65,7 @@ fuzz_handle_plaintext(struct state *state)
 			}
 			else {
 				int i =0;
-				while(i < roll_dice(num_lines,1337)) {
+				while(i < roll_dice(num_lines, num_lines + 1337)) {
 					bit_shift_in_range(state->payload_fd,prev_bytes,strlen(lines[j]));
 					bit_flip_in_range(state->payload_fd,prev_bytes,strlen(lines[j]));
 					i++;
