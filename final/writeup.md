@@ -58,11 +58,24 @@ is optimised to look for particular bugs depending on the four file types.
 
 ## Json
 
-TODO
+- Format string vulnerabilities inside braces
+- Buffer overflow vulnerabilities inside braces
+- Bugs with missing or extra control characters
+- Bugs parsing non-printable or ascii characters
+- Bugs parsing large files
+- Integer overflows
+- Integer underflows
+- Nesting control structures (e.g. nesting braces and brackets)
 
 ## Plain Text
 
-TODO
+- Format string vulnerabilites
+- Buffer overflow vulnerabilities 
+- Integer overflows
+- Integer underflows
+- Bugs parsing non-printable characters 
+- Bugs parsing unicode symbols
+- Bugs parsing ascii characters/punctuation
 
 # Fuzzing Strategies
 
