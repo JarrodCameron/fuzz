@@ -95,10 +95,12 @@ void bit_flip_in_range(int fd, int start_range, int len) {
 
 		lseek(fd, start_range+i, SEEK_SET);
 		write(fd, &new_byte, 1);
+		fgetc(stdin);
 		deploy();
 
 		lseek(fd, start_range+i, SEEK_SET);
 		write(fd, &bytes[i], 1);
+		fgetc(stdin);
 
 		i++;
 	}
@@ -117,11 +119,12 @@ void bit_flip_in_range(int fd, int start_range, int len) {
 
 		lseek(fd, start_range+byte_to_flip, SEEK_SET);
 		write(fd, &new_byte, 1);
+		fgetc(stdin);
 		deploy();
 
 		lseek(fd, start_range+byte_to_flip, SEEK_SET);
 		write(fd, &bytes[byte_to_flip], 1);
-
+		fgetc(stdin);
 		i++;
 	}
 
@@ -129,6 +132,7 @@ void bit_flip_in_range(int fd, int start_range, int len) {
 
 	lseek(fd, start_range, SEEK_SET);
 	write(fd, bytes, len);
+	fgetc(stdin);
 }
 
 

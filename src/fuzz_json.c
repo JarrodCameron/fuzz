@@ -51,13 +51,13 @@ static void (*fuzz_payloads_repeat[])(struct state *) = {
 
 /* Here are the functions that should be only run once */
 static void (*fuzz_payloads_single[])(struct state *) = {
-	fuzz_buffer_overflow,
+	//fuzz_buffer_overflow,
 	//fuzz_bad_nums,
 	//fuzz_fmt_str,
 	//fuzz_empty,
 	//fuzz_extra_entries,
-	fuzz_extra_objects,
-	//fuzz_swap_value,	
+	//fuzz_extra_objects,
+	fuzz_swap_value,	
 };
 
 void
@@ -284,7 +284,9 @@ static
 void
 fuzz_bit_shift(struct state *s)
 {
+	printf("bit shift\n");
 	size_t offset, len = json_dump(s);
+	fgetc(stdin);
 
 	for (size_t i = 0; i < len; i++) {
 		char ch = json.mem[i];
@@ -313,6 +315,7 @@ static
 void
 fuzz_empty(struct state *s)
 {
+	printf("empty\n");
 	void
 	f3(json_object_entry *entry)
 	{
@@ -328,6 +331,7 @@ fuzz_empty(struct state *s)
 		json_dump(s);
 		deploy();
 
+		// Might need to change this later
 		entry->value = NULL;
 		json_dump(s);
 		deploy();
@@ -345,12 +349,14 @@ static
 void
 fuzz_extra_entries(struct state *s)
 {
+	printf("extra entries\n");
 	uint32_t length = json.jv->u.object.length;
 	for (uint32_t i = 0; i < 100; i++) {
 		json_object_push(json.jv, "extra", json_string_new ("extra_value"));
 	}
 
 	json_dump(s);
+	fgetc(stdin);
 	deploy();
 
 	// Only restore the original entries
@@ -370,6 +376,7 @@ static
 void
 fuzz_extra_objects(struct state *s)
 {
+	printf("extra objects\n");
 	uint32_t length = json.jv->u.object.length;
 	// Initial copy
 	json_value *new_jv = json_object_new(length);
@@ -411,34 +418,52 @@ fuzz_extra_objects(struct state *s)
     //printf("json.jv: %s\n", buf);
 
 	json_dump(s);
-	deploy();
+	fgetc(stdin);
+	bit_flip_in_range(s->payload_fd, 0, 1);
+	
+	//deploy();
 
 	// restoring json.jv
 	json.jv = new_jv;
 }
 
-/*Swap a value in an entry */
+/*Change value types
+' in an entry */
 static
 void
 fuzz_swap_value(struct state *s)
 {
+	printf("swap value\n");
 	uint32_t length = json.jv->u.object.length;
 	for (uint32_t i = 0; i < length; i++) {
 		json_object_entry *entry = &(json.jv->u.object.values[i]);
+		printf("entry has name %s and value %d\n", entry->name, entry->value->u.integer);
 		json_value *old_value = entry->value;
+		printf("old_value is %d\n", old_value->u.integer);
 
+		char * buf = malloc(json_measure(json.jv));
+		json_serialize(buf, json.jv);
+		printf("json.jv: %s\n", buf);
+		
 		// Just swap to either string or integer for simplicity
 		if (entry->value->type == json_integer) {
 			entry->value = json_string_new("changed");
+			printf("entry has name %s and value %s and value type %d\n", entry->name, entry->value->u.string.ptr, entry->value->type);
 		} else if (entry->value->type == json_string){
 			entry->value = json_integer_new(0);
+			printf("entry has name %s and value %d and value type %d\n", entry->name, entry->value->u.integer, entry->value->type);
 		}
 
+		buf = malloc(json_measure(json.jv));
+		json_serialize(buf, json.jv);
+		printf("json.jv: %s\n", buf);
+
 		json_dump(s);
+		fgetc(stdin);
 		deploy();
 
 		entry->value = old_value;
-
+		printf("entry has name %s and restored value %d and value type %d\n", entry->name, entry->value->u.integer, entry->value->type);
 	}
 }
 
