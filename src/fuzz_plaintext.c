@@ -36,7 +36,7 @@ fuzz_handle_plaintext(struct state *state)
 	}
 	for(int j=0; j < num_lines; j++){
 		lines[j][strlen(lines[j])] = '\n';
-		lines[j][strlen(lines[j])+1] = '\0'; 	
+		lines[j][strlen(lines[j])+1] = '\0';
 		printf("%s > %ld\n",lines[j],strlen(lines[j]));
 		write(state->payload_fd, lines[j], strlen(lines[j]));
         }
@@ -70,7 +70,7 @@ fuzz_handle_plaintext(struct state *state)
 	}
 	// Fuzz each line separately
 	// For each line: fuzz the line
-	
+
 	// Multi-line files imply different points of entry
 	// Preserve first line to begin with
 //	if(count_lines(state->input_file) > 1) {
@@ -81,7 +81,7 @@ fuzz_handle_plaintext(struct state *state)
 //		while (1) {
 //			uint32_t idx = roll_dice(0, ARRSIZE(fuzz_payloads_repeat)-1);
 //			fuzz_payloads_repeat[idx](state);
-//		}	
+//		}
 //	}
 }
 
@@ -95,7 +95,7 @@ int count_lines(const char *file){
 	// finding all the special characters
 	for (char c = getc(fd); c != EOF; c = getc(fd)) {
 		switch(c){
-			case '\n': 
+			case '\n':
 				line++;
 		}
 	}
