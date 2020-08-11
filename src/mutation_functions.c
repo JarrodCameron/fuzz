@@ -224,21 +224,11 @@ void replace_numbers(int fd, int byte_offset) {
 
 	printf("%lf\n", number);
 
-	write_int_number(fd, byte_offset, file_contents, num_length, 0);
-	write_int_number(fd, byte_offset, file_contents, num_length, 1);
-	write_int_number(fd, byte_offset, file_contents, num_length, -1);
-	write_int_number(fd, byte_offset, file_contents, num_length, -2);
 	write_int_number(fd, byte_offset, file_contents, num_length, abs((int)number));
 
-
-	write_int_number(fd, byte_offset, file_contents, num_length, CHAR_MIN-1);
-	write_int_number(fd, byte_offset, file_contents, num_length, CHAR_MAX+1);
-	write_int_number(fd, byte_offset, file_contents, num_length, UCHAR_MAX+1);
-	write_int_number(fd, byte_offset, file_contents, num_length, 100);
-	write_int_number(fd, byte_offset, file_contents, num_length, INT_MIN);
-	write_int_number(fd, byte_offset, file_contents, num_length, (long)INT_MIN-1);
-	write_int_number(fd, byte_offset, file_contents, num_length, INT_MAX);
-	write_int_number(fd, byte_offset, file_contents, num_length, (long)INT_MAX+1);
+	for (uint64_t i = 0; i < ARRSIZE(bad_nums); i++) {
+                write_float_number(fd, byte_offset, file_contents, num_length, bad_nums[i].n);
+        }
 
 	write_float_number(fd, byte_offset, file_contents, num_length, 0.1);
 	write_float_number(fd, byte_offset, file_contents, num_length, -0.1);

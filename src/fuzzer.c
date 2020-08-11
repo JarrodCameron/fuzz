@@ -32,7 +32,7 @@ static struct state system_state = {0};
 static void (*fuzz_handles[])(struct state *) = {
 	[file_type_csv] = fuzz_handle_csv,
 	[file_type_json] = fuzz_handle_json,
-	[file_type_plain] = NULL,
+	[file_type_plain] = fuzz_handle_plaintext,
 	[file_type_xml] = fuzz_handle_xml,
 	[file_type_dummy] = fuzz_handle_dummy,
 };
