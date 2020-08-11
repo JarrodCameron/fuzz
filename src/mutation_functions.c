@@ -222,8 +222,6 @@ void replace_numbers(int fd, int byte_offset) {
 
 	int num_length = number_end_offset(file_contents, file_len-byte_offset);
 
-	printf("%lf\n", number);
-
 	write_int_number(fd, byte_offset, file_contents, num_length, abs((int)number));
 
 	for (uint64_t i = 0; i < ARRSIZE(bad_nums); i++) {
