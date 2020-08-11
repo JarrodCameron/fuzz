@@ -18,6 +18,7 @@
 #include "fuzz_csv.h"
 #include "fuzz_json.h"
 #include "fuzz_xml.h"
+#include "fuzz_plaintext.h"
 #include "fs.h"
 
 /* Helper Functions */
