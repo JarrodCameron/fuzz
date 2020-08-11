@@ -37,14 +37,26 @@ static void traverse_json_object(json_value *, joe_handle, jv_handle);
 static void traverse_json_array(json_value *, joe_handle, jv_handle);
 static void fuzz_fmt_str(struct state *s);
 static void fuzz_bit_shift(struct state *s);
+static void fuzz_empty(struct state *s);
+static void fuzz_extra_entries(struct state *s);
+static void fuzz_extra_objects(struct state *s);
+static void fuzz_append_objects(struct state *s);
 
-/* Here we add functions used for fuzzing.
- * Each function tests for something different. */
-static void (*fuzz_payloads[])(struct state *) = {
+/* Here are the functions that can be run multiple times and
+   do different things each time. */
+static void (*fuzz_payloads_repeat[])(struct state *) = {
+	fuzz_bit_shift,
+};
+
+/* Here are the functions that should be only run once */
+static void (*fuzz_payloads_single[])(struct state *) = {
 	fuzz_buffer_overflow,
 	fuzz_bad_nums,
 	fuzz_fmt_str,
-	fuzz_bit_shift,
+	fuzz_empty,
+	fuzz_extra_entries,
+	fuzz_extra_objects,
+	fuzz_append_objects,
 };
 
 void
@@ -78,9 +90,14 @@ static
 void
 fuzz(struct state *s)
 {
+
+	for (uint32_t i = 0; i < ARRSIZE(fuzz_payloads_single); i++) {
+		fuzz_payloads_single[i](s);
+	}
+
 	while (1) {
-		uint32_t idx = roll_dice(0, ARRSIZE(fuzz_payloads)-1);
-		fuzz_payloads[idx](s);
+		uint32_t idx = roll_dice(0, ARRSIZE(fuzz_payloads_repeat)-1);
+		fuzz_payloads_repeat[idx](s);
 	}
 }
 
@@ -196,6 +213,17 @@ fuzz_bad_nums(struct state *s)
 
 				jv->u.integer = old_int;
 			}
+		} else if (jv->type == json_double) {
+			for (uint32_t i = 0; i < ARRSIZE(bad_nums_floats); i++) {
+				double old_double = jv->u.dbl;
+
+				jv->u.dbl = bad_nums_floats[i].n;
+
+				json_dump(s);
+				deploy();
+
+				jv->u.dbl = old_double;
+			}
 		}
 	}
 	traverse_json(json.jv, NULL, &f);
@@ -255,6 +283,7 @@ static
 void
 fuzz_bit_shift(struct state *s)
 {
+	printf("bit shift\n");
 	size_t offset, len = json_dump(s);
 
 	for (size_t i = 0; i < len; i++) {
@@ -278,3 +307,107 @@ fuzz_bit_shift(struct state *s)
 		}
 	}
 }
+
+/*Zero out and empty entries and values*/
+static
+void
+fuzz_empty(struct state *s)
+{
+	void
+	f3(json_object_entry *entry)
+	{
+		json_char *old_name = entry->name;
+		unsigned int old_len = entry->name_length;
+		json_value *old_value = entry->value;
+
+		entry->name = "";
+		json_dump(s);
+		deploy();
+
+		entry->name_length = 0;
+		json_dump(s);
+		deploy();
+
+		// Might need to change this later
+		entry->value = NULL;
+		json_dump(s);
+		deploy();
+
+		entry->name = old_name;
+		entry->name_length = old_len;
+		entry->value = old_value;
+	}
+
+	traverse_json(json.jv, &f3, NULL);
+}
+
+/*Create extra entries*/
+static
+void
+fuzz_extra_entries(struct state *s)
+{
+	uint32_t length = json.jv->u.object.length;
+	for (uint32_t i = 0; i < 100; i++) {
+		json_object_push(json.jv, "extra", json_string_new ("extra_value"));
+	}
+
+	json_dump(s);
+	deploy();
+
+	// Only restore the original entries
+	json_value *new_jv = json_object_new(json.jv->u.object.length);
+	for (uint32_t i = 0; i < length; i++) {
+		json_object_entry *entry = &(json.jv->u.object.values[i]);
+		json_object_push(new_jv, entry->name, entry->value);
+	}
+
+	// restoring json.jv
+	json.jv = new_jv;
+}
+
+/*Append extra objects*/
+static
+void
+fuzz_extra_objects(struct state *s)
+{
+	char * buf2 = malloc(json_measure(json.jv));
+    json_serialize(buf2, json.jv);
+
+	char * final = smalloc(105*strlen(buf2));
+	strcat(final, "[");
+	for (uint32_t i = 0; i < 100; i++) {
+		strcat(final, buf2);
+		strcat(final, ", ");
+	}
+	
+	strcat(final, buf2);
+	strcat(final, "]");
+
+	slseek(s->payload_fd, 0, SEEK_SET);
+	swrite(s->payload_fd, final, strlen(final));
+	sftruncate(s->payload_fd, strlen(final));
+
+	deploy();
+}
+
+/*Writing json.jv 100 times*/
+static 
+void 
+fuzz_append_objects(struct state *s)
+{
+	char * buf2 = malloc(json_measure(json.jv));
+    json_serialize(buf2, json.jv);
+	char * final = smalloc(105*strlen(buf2));
+	
+	for (uint32_t i = 0; i < 100; i++) {
+		strcat(final, buf2);
+		strcat(final, "\n");
+	}
+	
+	strcat(final, buf2);
+	slseek(s->payload_fd, 0, SEEK_SET);
+	swrite(s->payload_fd, final, strlen(final));
+	sftruncate(s->payload_fd, strlen(final));
+	deploy();
+}
+

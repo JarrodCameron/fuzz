@@ -64,6 +64,33 @@ TODO
 
 TODO
 
+# Fuzzing Strategies
+
+- __Plaintext__: 
+  In `fuzz_plaintext.c` , the `fuzz_handle_plaintext` first attempts a large
+  buffer overflow a random number of times, then reads a the input file 
+  into memory to be manipulated.
+  In the first loop, as denoted in comments, fuzzing methods only requiring
+  one execution such as trying typical problematic injection strings or 
+  numbers. The lists `bad_strings` and `bad_nums` are called from `utils.h`
+  in the fuzzing methods `replace_numbers` and `replace_strings`.
+  The second loop infinitely loops over every line in the input file, fuzzing
+  each line with functions from `mutation_functions.c` such as `bit_flip_in_range`
+  `bit_shift_in_range`. 
+
+- __JSON__: In `fuzz_json.c`, the fuzzer performs a few different types of strategies. 
+It first runs the functions that are deterministic, such as buffer overflow and format 
+strings. These will perform a function either on each entry, or on each value in the entry. 
+`fuzz_empty` will remove names and values from the entry. `fuzz_extra_entries`, 
+`fuzz_extra_objects` and `fuzz_append_objects` all perform overflow of some kind, with 
+`fuzz_append_objects` being invalid JSON.
+
+| Function               | Output 																		|
+|------------------------|------------------------------------------------------------------------------|
+| `fuzz_extra_entries`   | `{ "extra_name" : " "extra_value",  "extra_name" : " "extra_value" }` 		|
+| `fuzz_extra_objects`   | `[{ "extra_name" : " "extra_value" }, { "extra_name" : " "extra_value" }]`   |
+| `fuzz_extra_objects`	 | `{ "extra_name" : " "extra_value" }`<br> `{ "extra_name" : " "extra_value" }`|
+
 # Possible Improvements
 
 - __Multi-threading__: This would provide a large performance boost. Currently
