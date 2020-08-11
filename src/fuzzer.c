@@ -136,21 +136,16 @@ fuzz_handle_dummy(UNUSED struct state *s)
 int
 main(int argc, char **argv, char **envp)
 {
-	if (argc < 3 || argc > 4) {
-		fprintf(stderr, "Usage: %s /path/to/data /path/to/bin [seed]\n", argv[0]);
+	if (argc != 3) {
+		fprintf(stderr, "Usage: %s /path/to/data /path/to/bin\n", argv[0]);
 		exit(1);
 	}
 
-	if (argc == 4) {
-		srand(atoi(argv[3]));
-	} else {
-		srand(time(NULL));
-	}
+	srand(time(NULL));
 
 	init_state(argv[1], argv[2], envp);
 
 	system_state.ft = detect_file(system_state.input_file);
-
 
 	fuzz_handles[system_state.ft](&system_state);
 
