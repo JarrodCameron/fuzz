@@ -1,12 +1,3 @@
-/*******************************************
- *                                         *
- *    Author: Brendan Nyholm (z5206679)    *
- *    Date:   16/07/20 12:30               *
- *                                         *
- *******************************************/
-
-
-
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>

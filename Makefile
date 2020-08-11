@@ -1,6 +1,3 @@
-# Author: Jarrod Cameron (z5210220)
-# Date:   10/07/20 21:12
-
 CC=gcc
 CFLAGS=-Wall -ggdb -Wextra -I$(INCDIR) `xml2-config --cflags`
 
