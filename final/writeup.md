@@ -50,7 +50,7 @@ This fuzzer can find:
   into memory to be manipulated.
   In the first loop, as denoted in comments, fuzzing methods only requiring
   one execution such as trying typical problematic injection strings or 
-  numbers. The lists `bad_strings` and `bad_nums` are called from `utils.c`
+  numbers. The lists `bad_strings` and `bad_nums` are called from `utils.h`
   in the fuzzing methods `replace_numbers` and `replace_strings`.
   The second loop infinitely loops over every line in the input file, fuzzing
   each line with functions from `mutation_functions.c` such as `bit_flip_in_range`
