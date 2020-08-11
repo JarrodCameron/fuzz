@@ -42,6 +42,21 @@ This fuzzer can find:
 - Nesting control structures (e.g. nesting tags in XML)
 - Rearranging fields and lines in a file
 
+# Fuzzing Strategies
+
+- __Plaintext__: 
+  In `fuzz_plaintext.c` , the `fuzz_handle_plaintext` first attempts a large
+  buffer overflow a random number of times, then reads a the input file 
+  into memory to be manipulated.
+  In the first loop, as denoted in comments, fuzzing methods only requiring
+  one execution such as trying typical problematic injection strings or 
+  numbers. The lists `bad_strings` and `bad_nums` are called from `utils.c`
+  in the fuzzing methods `replace_numbers` and `replace_strings`.
+  The second loop infinitely loops over every line in the input file, fuzzing
+  each line with functions from `mutation_functions.c` such as `bit_flip_in_range`
+  `bit_shift_in_range`. 
+
+
 # Possible Improvements
 
 - __Multi-threading__: This would provide a large performance boost. Currently
