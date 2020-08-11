@@ -301,36 +301,9 @@ void write_string(int fd, int byte_offset, int bytes_len, char* replacement_char
 
 void replace_strings(int fd, int byte_offset, int replace_str_len) {
 
-	//strings to test
-	char format_string[] = "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s";
-	int format_string_len = strlen(format_string);
-	char format_string2[] = "%n%n%n%n%n%n%n%n%n%n%n%n%n%n%n";
-	int format_string2_len = strlen(format_string2);
-	char buffer_overflow[1000];
-	memset(buffer_overflow, 'A', 1000);
-	int buffer_overflow_len = 1000;
-	char newline_break[] = "\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA";
-	int newline_break_len = strlen(newline_break);
-	char null_ptr_break[] = "\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A";
-	int null_ptr_break_len = 96;
-	char new_line_null_ptr[] = "\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n";
-	int new_line_null_ptr_len = 70;
-	char empty_string[] = "";
-	int empty_string_len = 0;
-
-	write_string(fd, byte_offset, replace_str_len, format_string, format_string_len);
-
-	write_string(fd, byte_offset, replace_str_len, format_string2, format_string2_len);
-
-	write_string(fd, byte_offset, replace_str_len, buffer_overflow, buffer_overflow_len);
-
-	write_string(fd, byte_offset, replace_str_len, newline_break, newline_break_len);
-
-	write_string(fd, byte_offset, replace_str_len, null_ptr_break, null_ptr_break_len);
-
-	write_string(fd, byte_offset, replace_str_len, new_line_null_ptr, new_line_null_ptr_len);
-
-	write_string(fd, byte_offset, replace_str_len, empty_string, empty_string_len);
+	for (uint64_t i = 0; i < ARRSIZE(bad_strings); i++) {
+		write_string(fd, byte_offset, replace_str_len, bad_strings[i].s, bad_strings[i].n);
+	}
 
 	return;
 
