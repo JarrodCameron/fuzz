@@ -622,44 +622,45 @@ static
 void
 try_special_chars(struct value* value_to_fuzz, struct state *s) {
 
-	//CSV unique strings pulled with inspiration from https://payatu.com/csv-injection-basic-to-exploit
-	char formula_case[] = "=A1+A2";
-	char formula_case2[] = "=Z0+A200";
-	char formula_case3[] = "=A-1+22";
-	char formula_case4[] = "=#$%^";
-	char formula_case5[] = "=";
-	char hyperlink_case[] = "HYPERLINK(plsdonthaq.me, [friendly_name])";
-	char hyperlink_case2[] = "HYPERLINK(, [])";
-	char command_inject_example[] = "cmd|' /C notepad'!'A1'";
-	char funny_csv_char[] = "+-@&;";
-	char *cases[] = {formula_case, formula_case2, formula_case3, formula_case4, formula_case5, hyperlink_case, hyperlink_case2, command_inject_example, funny_csv_char};
+	/* CSV unique strings pulled with inspiration from:
+	 * https://payatu.com/csv-injection-basic-to-exploit
+	 */
+	char *cases[] = {
+		"=A1+A2",
+		"=Z0+A200",
+		"=A-1+22",
+		"=#$%^",
+		"=",
+		"HYPERLINK(plsdonthaq.me, [friendly_name])",
+		"HYPERLINK(, [])",
+		"cmd|' /C notepad'!'A1'",
+		"+-@&;",
+	};
 
 	char *old_val = value_to_fuzz->val;
 	uint64_t old_len = value_to_fuzz->len;
 
 	for (uint64_t i = 0; i < ARRSIZE(cases); i++) {
-		value_to_fuzz->val =  strdup(cases[i]);
+		value_to_fuzz->val = cases[i];
 		value_to_fuzz->len = strlen(cases[i]);
+
 		dump_csv(s);
 		deploy();
 	}
 
-
-	//General strings from util.h
+	/* General strings from util.h */
 	for (uint64_t i = 0; i < ARRSIZE(bad_strings); i++) {
-		value_to_fuzz->val = smalloc(sizeof(char)*bad_strings[i].n);
-		memcpy(value_to_fuzz->val, bad_strings[i].s, bad_strings[i].n);
+
+		value_to_fuzz->val = bad_strings[i].s;
 		value_to_fuzz->len = bad_strings[i].n;
+
 		dump_csv(s);
 		deploy();
 	}
-
 
 	value_to_fuzz->val = old_val;
 	value_to_fuzz->len = old_len;
 }
-
-
 
 static
 void
