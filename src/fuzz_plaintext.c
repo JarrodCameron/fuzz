@@ -35,7 +35,8 @@ fuzz_handle_plaintext(struct state *state)
 	}
 	int k = 0;
 	while(k < roll_dice(num_lines, num_lines + 1337 )){
-        	write(state->payload_fd, state->mem, state->stat.st_size);	
+        	write(state->payload_fd, state->mem, state->stat.st_size);
+		k++;	
 	}
 	deploy();
 	slseek(state->payload_fd, 0, SEEK_SET);
