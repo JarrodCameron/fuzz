@@ -11,7 +11,7 @@ stats () {
 	txt="$2"
 	bin="$3"
 
-	niters=50
+	niters=100
 	nbads=0
 
 	rm -rf bad.txt*

@@ -54,6 +54,7 @@ static void fuzz_refresh(struct state *s);
 static void fuzz_rnd_flip(struct state *s);
 static void fuzz_rnd_shift(struct state *s);
 static void fuzz_single_fmt_props(struct state *s);
+static void fuzz_single_shuffle(struct state *s);
 static void fuzz_tag_attrs(struct state *s);
 static void fuzz_tag_fmt_str(struct state *s);
 static void get_node(void *data, xmlNode *curr);
@@ -109,6 +110,8 @@ static void (*fuzz_payloads[])(struct state *) = {
 static void (*fuzz_single_payloads[])(struct state *s) = {
 	fuzz_single_fmt_props, /* Fuzz all properties for format strings */
 	fuzz_refresh,          /* Refresh the state */
+	fuzz_single_shuffle,   /* Fuzz by shuffling nodes around */
+	fuzz_refresh,          /* Refresh the state */
 };
 
 void
@@ -160,9 +163,8 @@ static
 void
 fuzz(struct state *s)
 {
-	for (uint64_t i = 0; i < ARRSIZE(fuzz_single_payloads); i++) {
+	for (uint64_t i = 0; i < ARRSIZE(fuzz_single_payloads); i++)
 		fuzz_single_payloads[i](s);
-	}
 
 	while (1) {
 		uint32_t idx = roll_dice(0, ARRSIZE(fuzz_payloads)-1);
@@ -211,6 +213,30 @@ fuzz_single_fmt_props(struct state *s)
 		s,
 		handle_single_fmt_props
 	);
+}
+
+static
+void
+fuzz_single_shuffle(struct state *s)
+{
+	CHECK();
+
+	xmlNode *copy, *root;
+
+	root = sXmlDocGetRootElement(xml.doc);
+
+	for (uint64_t i = 0; i < 15; i++) {
+
+		copy = sXmlCopyNode(root, 1 /* recursive */);
+		if (coin_flip(50)) {
+			sXmlAddChildList(root, copy);
+		} else {
+			sXmlAddChild(root, copy);
+		}
+
+		save_doc(s);
+		deploy();
+	}
 }
 
 static
@@ -899,15 +925,16 @@ fuzz_rnd_flip(struct state *s)
 	CHECK();
 
 	uint32_t bytes, start_range;
+	const uint32_t maxlen = 8;
 
 	bytes = save_doc(s);
-	if (bytes <= 32) {
-		bit_shift_in_range(s->payload_fd, 0, 32);
+	if (bytes <= maxlen) {
+		bit_shift_in_range(s->payload_fd, 0, maxlen);
 		return;
 	}
 
-	start_range = roll_dice(0, bytes-32);
-	bit_flip_in_range(s->payload_fd, start_range, 32);
+	start_range = roll_dice(0, bytes-maxlen);
+	bit_flip_in_range(s->payload_fd, start_range, maxlen);
 }
 
 /* Only used for debugging */

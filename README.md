@@ -26,8 +26,8 @@ The results after running a few tests
 
 | name   | wins | attempts |
 |--------|------|----------|
-| `xml1` | 99   | 100      |
-| `xml2` | 69   | 78       |
+| `xml1` | 100  | 100      |
+| `xml2` | 100  | 100      |
 | `xml3` | 0    | 0        |
 
 # Shared libs
