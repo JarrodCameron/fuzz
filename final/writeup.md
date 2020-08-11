@@ -67,7 +67,7 @@ strings. These will perform a function either on each entry, or on each value in
 |------------------------|------------------------------------------------------------------------------|
 | `fuzz_extra_entries`   | `{ "extra_name" : " "extra_value",  "extra_name" : " "extra_value" }` 		|
 | `fuzz_extra_objects`   | `[{ "extra_name" : " "extra_value" }, { "extra_name" : " "extra_value" }]`   |
-| `fuzz_extra_objects`	 | `{ "extra_name" : " "extra_value" }`	\ `{ "extra_name" : " "extra_value" }` 	|
+| `fuzz_extra_objects`	 | `{ "extra_name" : " "extra_value" }`<br> `{ "extra_name" : " "extra_value" }`|
 
 # Possible Improvements
 
