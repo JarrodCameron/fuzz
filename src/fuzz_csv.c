@@ -99,8 +99,6 @@ static void (*fuzz_payloads_single[])(struct state *) = {
 	fuzz_bit_shift_flip_control_char,
 };
 
-
-
 void
 fuzz_handle_csv(struct state *state)
 {

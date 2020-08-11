@@ -42,7 +42,7 @@ static void (*fuzz_handles[])(struct state *) = {
 static void (*free_handles[])(struct state *) = {
 	[file_type_csv] = NULL,
 	[file_type_json] = free_handle_json,
-	[file_type_plain] = NULL,
+	[file_type_plain] = free_handle_plaintext,
 	[file_type_xml] = free_handle_xml,
 	[file_type_dummy] = NULL,
 };

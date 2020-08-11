@@ -122,8 +122,8 @@ void bit_flip_in_range(int fd, int start_range, int len) {
 
 
 int file_length(int fd) {
-	lseek(fd, 0, SEEK_SET);
-	int file_len = lseek(fd,0,SEEK_END);
+	slseek(fd, 0, SEEK_SET);
+	int file_len = slseek(fd,0,SEEK_END);
 	return file_len;
 }
 
@@ -206,12 +206,12 @@ void write_float_number(int fd, int byte_offset, char* file_contents, int num_le
 	free(quick_string);
 }
 
-// byte_offset, the offset of the file for which the number it is, it can be a float or integer
+/* byte_offset, the offset of the file for which the number it is, it can be a
+ * float or integer */
 void replace_numbers(int fd, int byte_offset) {
+
 	int file_len = file_length(fd);
 	slseek(fd, byte_offset, SEEK_SET);
-
-
 
 	char* file_contents = smalloc(file_len- byte_offset);
 	sread(fd, file_contents, file_len-byte_offset);
@@ -225,8 +225,8 @@ void replace_numbers(int fd, int byte_offset) {
 	write_int_number(fd, byte_offset, file_contents, num_length, abs((int)number));
 
 	for (uint64_t i = 0; i < ARRSIZE(bad_nums); i++) {
-                write_float_number(fd, byte_offset, file_contents, num_length, bad_nums[i].n);
-        }
+		write_float_number(fd, byte_offset, file_contents, num_length, bad_nums[i].n);
+	}
 
 	write_float_number(fd, byte_offset, file_contents, num_length, 0.1);
 	write_float_number(fd, byte_offset, file_contents, num_length, -0.1);
