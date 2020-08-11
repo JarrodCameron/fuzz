@@ -39,7 +39,6 @@ static void fuzz_fmt_str(struct state *s);
 static void fuzz_bit_shift(struct state *s);
 static void fuzz_empty(struct state *s);
 static void fuzz_extra_entries(struct state *s);
-static void fuzz_swap_value(struct state *s);
 static void fuzz_extra_objects(struct state *s);
 static void fuzz_append_objects(struct state *s);
 
@@ -55,9 +54,8 @@ static void (*fuzz_payloads_single[])(struct state *) = {
 	fuzz_bad_nums,
 	fuzz_fmt_str,
 	fuzz_empty,
-	//fuzz_extra_entries,
+	fuzz_extra_entries,
 	fuzz_extra_objects,
-	//fuzz_swap_value,	
 	fuzz_append_objects,
 };
 
@@ -365,7 +363,6 @@ fuzz_extra_entries(struct state *s)
 
 	// restoring json.jv
 	json.jv = new_jv;
-
 }
 
 /*Append extra objects*/
@@ -373,9 +370,6 @@ static
 void
 fuzz_extra_objects(struct state *s)
 {
-	printf("extra objects\n");
-	uint32_t length = json.jv->u.object.length;
-
 	char * buf2 = malloc(json_measure(json.jv));
     json_serialize(buf2, json.jv);
 
@@ -394,72 +388,9 @@ fuzz_extra_objects(struct state *s)
 	sftruncate(s->payload_fd, strlen(final));
 
 	deploy();
-
-    
-
-	// Initialising new parser
-	/*json_settings settings = {};
-	settings.value_extra = json_builder_extra;
-	char err[json_error_max];
-	json_value * new = json_parse_ex(&settings, final, strlen(final), err);
-	if (new == NULL)
-		panic("Failed to init json parser for new\n");
-
-	json.memlen = (json_measure(new) + sizeof(BIG)) * 5;
-	json.mem = smalloc(json.memlen);
-
-	json_serialize(json.mem, new);
-
-	json.jv = new;
-	json_dump(s);
-	deploy();
-
-	// restoring json.jv
-	json.jv = new_jv;*/
 }
 
-/*Change value types
-' in an entry */
-/*static
-void
-fuzz_swap_value(struct state *s)
-{
-	printf("swap value\n");
-	uint32_t length = json.jv->u.object.length;
-	for (uint32_t i = 0; i < length; i++) {
-		json_object_entry *entry = &(json.jv->u.object.values[i]);
-		printf("entry has name %s and value %d\n", entry->name, entry->value->u.integer);
-		json_value *old_value = entry->value;
-		printf("old_value is %d\n", old_value->u.integer);
-
-		char * buf = malloc(json_measure(json.jv));
-		json_serialize(buf, json.jv);
-		printf("json.jv: %s\n", buf);
-		
-		// Just swap to either string or integer for simplicity
-		if (entry->value->type == json_integer) {
-			json_value *new = json_integer_new(100);
-			printf("new has value %d and value type %d\n", new->u.integer, new->type);
-			entry->value = new;
-			printf("entry has name %s and value %d and value type %d\n", entry->name, entry->value->u.integer, entry->value->type);
-		} else if (entry->value->type == json_string){
-			entry->value = json_integer_new(0);
-		}
-
-		json_serialize(buf, json.jv);
-		printf("json.jv: %s\n", buf);
-		printf("json.jv length %d\n", json.jv->u.object.length);
-
-		json_dump(s);
-		fgetc(stdin);
-		deploy();
-
-		entry->value = old_value;
-		printf("entry has name %s and restored value %d and value type %d\n", entry->name, entry->value->u.integer, entry->value->type);
-	}
-}*/
-
-/*Writing json.jv 1000 times*/
+/*Writing json.jv 100 times*/
 static 
 void 
 fuzz_append_objects(struct state *s)
