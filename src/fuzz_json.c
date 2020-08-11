@@ -31,7 +31,6 @@ typedef void (*jv_handle)(json_value *);
 static void fuzz(struct state *s);
 static void fuzz_buffer_overflow(struct state *s);
 static size_t json_dump(struct state *s);
-static size_t json_dump_append(struct state *s, char * str);
 static void traverse_json(json_value *jv, joe_handle joeh, jv_handle jvh);
 static void fuzz_bad_nums(struct state *s);
 static void traverse_json_object(json_value *, joe_handle, jv_handle);
@@ -52,12 +51,12 @@ static void (*fuzz_payloads_repeat[])(struct state *) = {
 
 /* Here are the functions that should be only run once */
 static void (*fuzz_payloads_single[])(struct state *) = {
-	//fuzz_buffer_overflow,
-	//fuzz_bad_nums,
-	//fuzz_fmt_str,
-	//fuzz_empty,
+	fuzz_buffer_overflow,
+	fuzz_bad_nums,
+	fuzz_fmt_str,
+	fuzz_empty,
 	//fuzz_extra_entries,
-	//fuzz_extra_objects,
+	fuzz_extra_objects,
 	//fuzz_swap_value,	
 	fuzz_append_objects,
 };
@@ -98,10 +97,10 @@ fuzz(struct state *s)
 		fuzz_payloads_single[i](s);
 	}
 
-	/*while (1) {
+	while (1) {
 		uint32_t idx = roll_dice(0, ARRSIZE(fuzz_payloads_repeat)-1);
 		fuzz_payloads_repeat[idx](s);
-	}*/
+	}
 }
 
 /* This function traverses the json object and invokes joeh() and jvh() on each
@@ -198,26 +197,6 @@ json_dump(struct state *s)
 	return len;
 }
 
-/* Append the json_value into the payload_fd file, return the length of the json
- * object */
-static
-size_t
-json_dump_append(struct state *s, char * str)
-{
-	size_t len = json_measure(json.jv);
-	if (len > json.memlen)
-		panic("The json object is larger than the size of memory");
-	json_serialize(json.mem, json.jv);
-	slseek(s->payload_fd, 0, SEEK_END);
-	swrite(s->payload_fd, json.mem, len);
-
-	if (str) {
-		slseek(s->payload_fd, 0, SEEK_END);
-		swrite(s->payload_fd, str, strlen(str));
-	}
-	return len;
-}
-
 static
 void
 fuzz_bad_nums(struct state *s)
@@ -308,7 +287,6 @@ fuzz_bit_shift(struct state *s)
 {
 	printf("bit shift\n");
 	size_t offset, len = json_dump(s);
-	fgetc(stdin);
 
 	for (size_t i = 0; i < len; i++) {
 		char ch = json.mem[i];
@@ -337,7 +315,6 @@ static
 void
 fuzz_empty(struct state *s)
 {
-	printf("empty\n");
 	void
 	f3(json_object_entry *entry)
 	{
@@ -371,14 +348,12 @@ static
 void
 fuzz_extra_entries(struct state *s)
 {
-	printf("extra entries\n");
 	uint32_t length = json.jv->u.object.length;
 	for (uint32_t i = 0; i < 100; i++) {
 		json_object_push(json.jv, "extra", json_string_new ("extra_value"));
 	}
 
 	json_dump(s);
-	fgetc(stdin);
 	deploy();
 
 	// Only restore the original entries
@@ -400,20 +375,13 @@ fuzz_extra_objects(struct state *s)
 {
 	printf("extra objects\n");
 	uint32_t length = json.jv->u.object.length;
-	// Initial copy
-	json_value *new_jv = json_object_new(length);
-	for (uint32_t i = 0; i < length; i++) {
-		json_object_entry *entry = &(json.jv->u.object.values[i]);
-		json_object_push(new_jv, entry->name, entry->value);
-	}
 
-	char * buf2 = malloc(json_measure(new_jv));
-    json_serialize(buf2, new_jv);
-    //printf("new_jv: %s\n", buf2);
+	char * buf2 = malloc(json_measure(json.jv));
+    json_serialize(buf2, json.jv);
 
 	char * final = smalloc(105*strlen(buf2));
 	strcat(final, "[");
-	for (uint32_t i = 0; i < 99; i++) {
+	for (uint32_t i = 0; i < 100; i++) {
 		strcat(final, buf2);
 		strcat(final, ", ");
 	}
@@ -421,8 +389,16 @@ fuzz_extra_objects(struct state *s)
 	strcat(final, buf2);
 	strcat(final, "]");
 
+	slseek(s->payload_fd, 0, SEEK_SET);
+	swrite(s->payload_fd, final, strlen(final));
+	sftruncate(s->payload_fd, strlen(final));
+
+	deploy();
+
+    
+
 	// Initialising new parser
-	json_settings settings = {};
+	/*json_settings settings = {};
 	settings.value_extra = json_builder_extra;
 	char err[json_error_max];
 	json_value * new = json_parse_ex(&settings, final, strlen(final), err);
@@ -439,12 +415,12 @@ fuzz_extra_objects(struct state *s)
 	deploy();
 
 	// restoring json.jv
-	json.jv = new_jv;
+	json.jv = new_jv;*/
 }
 
 /*Change value types
 ' in an entry */
-static
+/*static
 void
 fuzz_swap_value(struct state *s)
 {
@@ -481,19 +457,26 @@ fuzz_swap_value(struct state *s)
 		entry->value = old_value;
 		printf("entry has name %s and restored value %d and value type %d\n", entry->name, entry->value->u.integer, entry->value->type);
 	}
-}
+}*/
 
 /*Writing json.jv 1000 times*/
 static 
 void 
 fuzz_append_objects(struct state *s)
 {
-	printf("append objects\n");
-	for (uint32_t i = 0; i < 1024; i++) {
-		json_dump_append(s, "\n");
-		//json_dump_append(s, NULL);
-		
+	char * buf2 = malloc(json_measure(json.jv));
+    json_serialize(buf2, json.jv);
+	char * final = smalloc(105*strlen(buf2));
+	
+	for (uint32_t i = 0; i < 100; i++) {
+		strcat(final, buf2);
+		strcat(final, "\n");
 	}
+	
+	strcat(final, buf2);
+	slseek(s->payload_fd, 0, SEEK_SET);
+	swrite(s->payload_fd, final, strlen(final));
+	sftruncate(s->payload_fd, strlen(final));
 	deploy();
 }
 
