@@ -69,7 +69,13 @@ is optimised to look for particular bugs depending on the four file types.
 
 ## Plain Text
 
-TODO
+- Format string vulnerabilites
+- Buffer overflow vulnerabilities 
+- Integer overflows
+- Integer underflows
+- Bugs parsing non-printable characters 
+- Bugs parsing unicode symbols
+- Bugs parsing ascii characters/punctuation
 
 # Fuzzing Strategies
 
