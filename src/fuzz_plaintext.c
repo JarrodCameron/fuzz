@@ -23,19 +23,20 @@ void
 fuzz_handle_plaintext(struct state *state)
 {
 	int num_lines = count_lines(state->input_file);
-	char ** lines = malloc(num_lines * sizeof(char*));
+	char ** lines = smalloc(num_lines * sizeof(char*));
 	char * token = strtok(state->mem, "\n");
 	// loop through the string to extract all other tokens
 	int i = 0;
 	while( token != NULL ) {
-		lines[i] = malloc(sizeof(char) * strlen(token+2));
+		lines[i] = smalloc(sizeof(char) * strlen(token+2));
 		strcpy(lines[i],token);
 		token = strtok(NULL, "\n");
 		i++;
 	}
+	// Try buffer overflow
 	int k = 0;
-	while(k < roll_dice(num_lines, num_lines + 1337 )){
-        	write(state->payload_fd, state->mem, state->stat.st_size);
+	while(k < roll_dice(num_lines, num_lines + 1337)){
+        write(state->payload_fd, state->mem, state->stat.st_size);
 		k++;	
 	}
 	deploy();
@@ -44,8 +45,9 @@ fuzz_handle_plaintext(struct state *state)
 		lines[j][strlen(lines[j])] = '\n';
 		lines[j][strlen(lines[j])+1] = '\0';
 		write(state->payload_fd, lines[j], strlen(lines[j]));
-        }
+    }
 	int prev_bytes = 0;
+	// Per line, try one-time fuzzing methods such as replacing strings/numbers
 	for(int j=0; j < num_lines; j++){
 		if(lines[j][0] >= '0' && lines[j][0] <= '9'){
 			replace_numbers(state->payload_fd, prev_bytes);
@@ -55,6 +57,7 @@ fuzz_handle_plaintext(struct state *state)
 	        }
 		prev_bytes = prev_bytes + strlen(lines[j]);
 	}
+	// Fuzz each line infinitely
 	while(1) {
 		prev_bytes = 0;
 		for(int j=0; j < num_lines; j++){
