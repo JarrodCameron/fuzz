@@ -69,46 +69,69 @@ is optimised to look for particular bugs depending on the four file types.
 
 ## Plain Text
 
-- Format string vulnerabilites
-- Buffer overflow vulnerabilities 
+- Format string vulnerabilities
+- Buffer overflow vulnerabilities
 - Integer overflows
 - Integer underflows
-- Bugs parsing non-printable characters 
-- Bugs parsing unicode symbols
+- Bugs parsing non-printable characters
+- Bugs parsing Unicode symbols
 - Bugs parsing ascii characters/punctuation
 
 # Fuzzing Strategies
 
-- __Plaintext__: 
-  In `fuzz_plaintext.c` , the `fuzz_handle_plaintext` first attempts a large
-  buffer overflow a random number of times, then reads a the input file 
-  into memory to be manipulated.
-  In the first loop, as denoted in comments, fuzzing methods only requiring
-  one execution such as trying typical problematic injection strings or 
-  numbers. The lists `bad_strings` and `bad_nums` are called from `utils.h`
-  in the fuzzing methods `replace_numbers` and `replace_strings`.
-  The second loop infinitely loops over every line in the input file, fuzzing
-  each line with functions from `mutation_functions.c` such as `bit_flip_in_range`
-  `bit_shift_in_range`. 
+- __Plaintext__: In `fuzz_plaintext.c` , the `fuzz_handle_plaintext` first
+  attempts a large buffer overflow a random number of times, then reads a the
+  input file into memory to be manipulated.
+  In the first loop, as denoted in comments, fuzzing methods only requiring one
+  execution such as trying typical problematic injection strings or numbers.
+  The lists `bad_strings` and `bad_nums` are called from `utils.h` in the
+  fuzzing methods `replace_numbers` and `replace_strings`.  The second loop
+  infinitely loops over every line in the input file, fuzzing each line with
+  functions from `mutation_functions.c` such as `bit_flip_in_range`
+  `bit_shift_in_range`.
 
-- __JSON__: In `fuzz_json.c`, the fuzzer performs a few different types of strategies. 
-It first runs the functions that are deterministic, such as buffer overflow and format 
-strings. These will perform a function either on each entry, or on each value in the entry. 
-`fuzz_empty` will remove names and values from the entry. `fuzz_extra_entries`, 
-`fuzz_extra_objects` and `fuzz_append_objects` all perform overflow of some kind, with 
-`fuzz_append_objects` being invalid JSON.
+- __JSON__: In `fuzz_json.c`, the fuzzer performs a few different types of
+  strategies.  It first runs the functions that are deterministic, such as
+  buffer overflow and format strings. These will perform a function either on
+  each entry, or on each value in the entry.  `fuzz_empty` will remove names
+  and values from the entry. `fuzz_extra_entries`, `fuzz_extra_objects` and
+  `fuzz_append_objects` all perform overflow of some kind, with
+  `fuzz_append_objects` being invalid JSON.
 
-| Function               | Output 																		|
+| Function               | Output                                                                       |
 |------------------------|------------------------------------------------------------------------------|
-| `fuzz_extra_entries`   | `{ "extra_name" : " "extra_value",  "extra_name" : " "extra_value" }` 		|
+| `fuzz_extra_entries`   | `{ "extra_name" : " "extra_value",  "extra_name" : " "extra_value" }`        |
 | `fuzz_extra_objects`   | `[{ "extra_name" : " "extra_value" }, { "extra_name" : " "extra_value" }]`   |
-| `fuzz_extra_objects`	 | `{ "extra_name" : " "extra_value" }`<br> `{ "extra_name" : " "extra_value" }`|
+| `fuzz_extra_objects`   | `{ "extra_name" : " "extra_value" }`<br> `{ "extra_name" : " "extra_value" }`|
 
-- __CSV__: In `fuzz_csv.c`, the fuzzer initially runs 4 payloads that attempt the same technquies without any randomisation. 
-These include some buffer overflow and format string attacks as well as swapping some values with known problematic input such as swapping `1` with `-1`, `-999999`, `0` etc. 
-These functions run the same checks for each invokation so there is no added value in running them a second time on a binary. After this set of functions are executed the fuzzer progresses into an infinite loop which mutates the input in random ways in random locations. The loop will exit when a crash occurs. 
-Some techniques include bit shifts (`bit_shift_in_range`), bit flips (`bit_flip_in_range`), increasing the number of cells (`fuzz_populate_width`), increasing the number of rows (`fuzz_populate_length`) and creating numerous empty cells (`fuzz_empty_cells`). 
-These strategies continue to execute with different outputs due to varying execution based on a pseudo random number generator `rand()`.
+- __XML__: In `fuzz_xml.c`, the fuzzer starts off by parsing the input file
+  into a tree data structure that can be manipulated via the libxml2 API. At
+  the start of the fuzzer's lifetime the fuzzer checks for some common
+  vulnerabilities which include format strings and adding/removing nodes from
+  inside of the tree. For the remainder of the fuzzer's life time a list of
+  fuzzing strategies are chosen randomly. Some of these strategies will mutate
+  the tree (with the aim of hitting as many code paths as possible) and other
+  functions with mutate data that is inside the node of each tree (this
+  include format strings, buffer overflows and scanning for integers and
+  swapping them with out integers that are known to cause vulnerabilities).
+  Other strategies include picking random locations in the file and randomly
+  bit flipping with the goal of corrupting the data structure itself.
+
+- __CSV__: In `fuzz_csv.c`, the fuzzer initially runs 4 payloads that attempt
+  the same techniques without any randomisation.  These include some buffer
+  overflow and format string attacks as well as swapping some values with known
+  problematic input such as swapping `1` with `-1`, `-999999`, `0` etc.  These
+  functions run the same checks for each invocation so there is no added value
+  in running them a second time on a binary. After this set of functions are
+  executed the fuzzer progresses into an infinite loop which mutates the input
+  in random ways in random locations. The loop will exit when a crash occurs.
+  Some techniques include bit shifts (`bit_shift_in_range`), bit flips
+  (`bit_flip_in_range`), increasing the number of cells
+  (`fuzz_populate_width`), increasing the number of rows
+  (`fuzz_populate_length`) and creating numerous empty cells
+  (`fuzz_empty_cells`).  These strategies continue to execute with different
+  outputs due to varying execution based on a pseudo random number generator
+  `rand()`.
 
 
 # Possible Improvements
