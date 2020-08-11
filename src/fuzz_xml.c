@@ -35,6 +35,7 @@ typedef void (*iter_handle)(void *, xmlNodePtr);
 
 /* Helper functions */
 static const char *dbg_xmlElementType(xmlElementType type);
+static xmlNode * get_random_node_from_doc(void);
 static int save_doc(struct state *s);
 static uint64_t get_num_nodes(xmlNode *root);
 static void add_node_random(xmlNode *curr, xmlNode *new);
@@ -54,6 +55,7 @@ static void fuzz_refresh(struct state *s);
 static void fuzz_rnd_flip(struct state *s);
 static void fuzz_rnd_shift(struct state *s);
 static void fuzz_single_fmt_props(struct state *s);
+static void fuzz_single_populate(struct state *s);
 static void fuzz_single_shuffle(struct state *s);
 static void fuzz_tag_attrs(struct state *s);
 static void fuzz_tag_fmt_str(struct state *s);
@@ -80,6 +82,7 @@ static struct {
 
 	/* This are variables that will be free in the case of a memory leak */
 	xmlChar *dummy_char; /* for xmlFree() */
+	xmlNode *dummy_nodes[10]; /* for xmlFreeNode() */
 
 	xmlDocPtr doc;
 	xmlSaveCtxtPtr ctx;
@@ -111,6 +114,8 @@ static void (*fuzz_single_payloads[])(struct state *s) = {
 	fuzz_single_fmt_props, /* Fuzz all properties for format strings */
 	fuzz_refresh,          /* Refresh the state */
 	fuzz_single_shuffle,   /* Fuzz by shuffling nodes around */
+	fuzz_refresh,          /* Refresh the state */
+	fuzz_single_populate,  /* Shuffle and duplicate nodes */
 	fuzz_refresh,          /* Refresh the state */
 };
 
@@ -150,6 +155,11 @@ free_handle_xml(UNUSED struct state *state)
 {
 	if (xml.dummy_char)
 		xmlFree(xml.dummy_char);
+
+	for (uint64_t i = 0; i < ARRSIZE(xml.dummy_nodes); i++) {
+		if (xml.dummy_nodes[i])
+			xmlFreeNode(xml.dummy_nodes[i]);
+	}
 
 	xmlFreeDoc(xml.doc);
 	xmlCleanupParser();
@@ -213,6 +223,78 @@ fuzz_single_fmt_props(struct state *s)
 		s,
 		handle_single_fmt_props
 	);
+}
+
+static
+void
+fuzz_single_populate(struct state *s)
+{
+	CHECK();
+
+	xmlNode *tmp, *root;
+
+	for (uint64_t i = 0; i < ARRSIZE(xml.dummy_nodes); i++) {
+		tmp = get_random_node_from_doc();
+		if (!tmp)
+			goto fuzz_single_populate_error;
+		xml.dummy_nodes[i] = sXmlCopyNode(tmp, 1 /* recursive */);
+	}
+
+	root = sXmlDocGetRootElement(xml.doc);
+
+	for (uint64_t i = 0; i < 50000; i++) {
+
+		tmp = xml.dummy_nodes[roll_dice(0, ARRSIZE(xml.dummy_nodes)-1)];
+		tmp = sXmlCopyNode(tmp, 1 /* recursive */);
+
+		sXmlAddChildList(root, tmp);
+
+		root = root->children;
+		while (root && root->type != XML_ELEMENT_NODE)
+			root = root->next;
+
+		if (!root)
+			break;
+
+		if (i % 1000 == 0) {
+			save_doc(s);
+			deploy();
+		}
+	}
+
+	save_doc(s);
+	deploy();
+
+fuzz_single_populate_error:
+	for (uint64_t i = 0; i < ARRSIZE(xml.dummy_nodes); i++) {
+		if (xml.dummy_nodes[i])
+			xmlFreeNode(xml.dummy_nodes[i]);
+	}
+}
+
+static
+xmlNode *
+get_random_node_from_doc(void)
+{
+	void *args[2];
+	xmlNode *curr = NULL;
+	uint64_t index;
+
+	if (xml.num_nodes <= 2)
+		return NULL; /* not enough nodes */
+
+	index = roll_dice(1, xml.num_nodes-1);
+
+	args[0] = &index; /* Argument: uint64_t* */
+	args[1] = &curr;  /* Return value: xmlNode** */
+
+	iterate_xmldoc(
+		sXmlDocGetRootElement(xml.doc),
+		&args,
+		get_node
+	);
+
+	return curr;
 }
 
 static
@@ -383,7 +465,7 @@ fuzz_tag_attrs(struct state *s)
 	);
 }
 
-/* TODO We could segfault if we iterate too many time. To fix this we need a
+/* TODO We could segfault if we iterate too many times. To fix this we need a
  * stack to store all possible iterations */
 static
 void
