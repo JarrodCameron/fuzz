@@ -32,35 +32,15 @@ The fuzzer is split into four different components, one for each file type and
 is optimised to look for particular bugs depending on the four file types.
 
 This fuzzer can find:
-- format string vulnerabilities
-- buffer overflow vulnerabilities
-- bugs with missing or extra control characters
-- bugs parsing non-printable or ascii characters
-- bugs parsing large files
-
-## CSV
-
-TODO
-
-## Json
-
-TODO
-
-## XML
-
-- Buffer overflow in the tag names
-- Buffer overflow in the tag properties
-- Buffer overflow in the data between two tags
-- Format strings in tag names
-- Format strings in tag properties
-- Integer overflow/underflow in tag properties
-- Integer overflow/underflow in data between two tags
-- Memory corruption from non-printable characters
-- General errors from mishandling tags that are in the wrong order
-
-## Plain Text
-
-TODO
+- Format string vulnerabilities
+- Buffer overflow vulnerabilities
+- Bugs with missing or extra control characters
+- Bugs parsing non-printable or ascii characters
+- Bugs parsing large files
+- Integer overflows
+- Integer underflows
+- Nesting control structures (e.g. nesting tags in XML)
+- Rearranging fields and lines in a file
 
 # Possible Improvements
 
