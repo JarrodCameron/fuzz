@@ -1,6 +1,3 @@
-# Author: Jarrod Cameron (z5210220)
-# Date:   20/07/20 18:48
-
 CC=gcc
 CFLAGS=-Wall -Wextra -ggdb -shared -fPIC -I$(INCDIR)
 

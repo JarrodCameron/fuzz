@@ -1,12 +1,3 @@
-/*******************************************
- *                                         *
- *    Author: Brendan Nyholm (z5206679)    *
- *    Date:   16/07/20 12:30               *
- *                                         *
- *******************************************/
-
-
-
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -22,7 +13,6 @@
 #include "fuzzer.h"
 #include "mutation_functions.h"
 #include "safe.h"
-
 
 void
 bit_shift_in_range(int fd, uint32_t start_range, uint32_t len)
@@ -81,26 +71,23 @@ bit_shift_in_range(int fd, uint32_t start_range, uint32_t len)
 
 
 void bit_flip_in_range(int fd, int start_range, int len) {
-	lseek(fd, start_range, SEEK_SET);
+	slseek(fd, start_range, SEEK_SET);
 	unsigned char mask = 255;
-	char *bytes = malloc(len);
-	read(fd, bytes, len);
-	lseek(fd, start_range, SEEK_SET);
-
+	char *bytes = smalloc(len);
+	sread(fd, bytes, len);
+	slseek(fd, start_range, SEEK_SET);
 
 	int i = 0;
 	while (i < len) {
 
 		char new_byte = (mask^bytes[i]);
 
-		lseek(fd, start_range+i, SEEK_SET);
-		write(fd, &new_byte, 1);
-		fgetc(stdin);
+		slseek(fd, start_range+i, SEEK_SET);
+		swrite(fd, &new_byte, 1);
 		deploy();
 
-		lseek(fd, start_range+i, SEEK_SET);
-		write(fd, &bytes[i], 1);
-		fgetc(stdin);
+		slseek(fd, start_range+i, SEEK_SET);
+		swrite(fd, &bytes[i], 1);
 
 		i++;
 	}
@@ -110,29 +97,25 @@ void bit_flip_in_range(int fd, int start_range, int len) {
 
 		mask = rand();
 
-
 		int byte_to_flip = rand()%(len);
-
 
 		char new_byte = (mask^bytes[byte_to_flip]);
 
-
-		lseek(fd, start_range+byte_to_flip, SEEK_SET);
-		write(fd, &new_byte, 1);
-		fgetc(stdin);
+		slseek(fd, start_range+byte_to_flip, SEEK_SET);
+		swrite(fd, &new_byte, 1);
 		deploy();
 
-		lseek(fd, start_range+byte_to_flip, SEEK_SET);
-		write(fd, &bytes[byte_to_flip], 1);
-		fgetc(stdin);
+		slseek(fd, start_range+byte_to_flip, SEEK_SET);
+		swrite(fd, &bytes[byte_to_flip], 1);
+
 		i++;
 	}
 
 
 
-	lseek(fd, start_range, SEEK_SET);
-	write(fd, bytes, len);
-	fgetc(stdin);
+	slseek(fd, start_range, SEEK_SET);
+	swrite(fd, bytes, len);
+	free(bytes);
 }
 
 
@@ -239,23 +222,11 @@ void replace_numbers(int fd, int byte_offset) {
 
 	int num_length = number_end_offset(file_contents, file_len-byte_offset);
 
-	printf("%lf\n", number);
-
-	write_int_number(fd, byte_offset, file_contents, num_length, 0);
-	write_int_number(fd, byte_offset, file_contents, num_length, 1);
-	write_int_number(fd, byte_offset, file_contents, num_length, -1);
-	write_int_number(fd, byte_offset, file_contents, num_length, -2);
 	write_int_number(fd, byte_offset, file_contents, num_length, abs((int)number));
 
-
-	write_int_number(fd, byte_offset, file_contents, num_length, CHAR_MIN-1);
-	write_int_number(fd, byte_offset, file_contents, num_length, CHAR_MAX+1);
-	write_int_number(fd, byte_offset, file_contents, num_length, UCHAR_MAX+1);
-	write_int_number(fd, byte_offset, file_contents, num_length, 100);
-	write_int_number(fd, byte_offset, file_contents, num_length, INT_MIN);
-	write_int_number(fd, byte_offset, file_contents, num_length, (long)INT_MIN-1);
-	write_int_number(fd, byte_offset, file_contents, num_length, INT_MAX);
-	write_int_number(fd, byte_offset, file_contents, num_length, (long)INT_MAX+1);
+	for (uint64_t i = 0; i < ARRSIZE(bad_nums); i++) {
+                write_float_number(fd, byte_offset, file_contents, num_length, bad_nums[i].n);
+        }
 
 	write_float_number(fd, byte_offset, file_contents, num_length, 0.1);
 	write_float_number(fd, byte_offset, file_contents, num_length, -0.1);
@@ -309,36 +280,9 @@ void write_string(int fd, int byte_offset, int bytes_len, char* replacement_char
 
 void replace_strings(int fd, int byte_offset, int replace_str_len) {
 
-	//strings to test
-	char format_string[] = "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s";
-	int format_string_len = strlen(format_string);
-	char format_string2[] = "%n%n%n%n%n%n%n%n%n%n%n%n%n%n%n";
-	int format_string2_len = strlen(format_string2);
-	char buffer_overflow[1000];
-	memset(buffer_overflow, 'A', 1000);
-	int buffer_overflow_len = 1000;
-	char newline_break[] = "\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA";
-	int newline_break_len = strlen(newline_break);
-	char null_ptr_break[] = "\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A";
-	int null_ptr_break_len = 96;
-	char new_line_null_ptr[] = "\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n";
-	int new_line_null_ptr_len = 70;
-	char empty_string[] = "";
-	int empty_string_len = 0;
-
-	write_string(fd, byte_offset, replace_str_len, format_string, format_string_len);
-
-	write_string(fd, byte_offset, replace_str_len, format_string2, format_string2_len);
-
-	write_string(fd, byte_offset, replace_str_len, buffer_overflow, buffer_overflow_len);
-
-	write_string(fd, byte_offset, replace_str_len, newline_break, newline_break_len);
-
-	write_string(fd, byte_offset, replace_str_len, null_ptr_break, null_ptr_break_len);
-
-	write_string(fd, byte_offset, replace_str_len, new_line_null_ptr, new_line_null_ptr_len);
-
-	write_string(fd, byte_offset, replace_str_len, empty_string, empty_string_len);
+	for (uint64_t i = 0; i < ARRSIZE(bad_strings); i++) {
+		write_string(fd, byte_offset, replace_str_len, bad_strings[i].s, bad_strings[i].n);
+	}
 
 	return;
 

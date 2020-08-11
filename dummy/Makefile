@@ -1,6 +1,3 @@
-# Author: Jarrod Cameron (z5210220)
-# Date:   05/08/20 15:45
-
 CC=gcc
 CFLAGS=-Wall -Wextra -ggdb -fno-stack-protector -no-pie
 BINS=dynamic32 dynamic64 static32 static64

@@ -1,10 +1,3 @@
-/*******************************************
- *                                         *
- *    Author: Jarrod Cameron (z5210220)    *
- *    Date:   10/07/20 18:46               *
- *                                         *
- *******************************************/
-
 #include <assert.h>
 #include <fcntl.h>
 #include <stdint.h>
@@ -25,6 +18,7 @@
 #include "fuzz_csv.h"
 #include "fuzz_json.h"
 #include "fuzz_xml.h"
+#include "fuzz_plaintext.h"
 #include "fs.h"
 
 /* Helper Functions */
@@ -39,7 +33,7 @@ static struct state system_state = {0};
 static void (*fuzz_handles[])(struct state *) = {
 	[file_type_csv] = fuzz_handle_csv,
 	[file_type_json] = fuzz_handle_json,
-	[file_type_plain] = NULL,
+	[file_type_plain] = fuzz_handle_plaintext,
 	[file_type_xml] = fuzz_handle_xml,
 	[file_type_dummy] = fuzz_handle_dummy,
 };

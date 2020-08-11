@@ -9,28 +9,61 @@
 
 # How The Fuzzer Works
 
-This fuzzer works by initially detecting the file type out of plaintext, CSV, JSON or XML and then parsing the file's data into a data structure for the fuzzer to manipulate. 
+This fuzzer works by initially detecting the file type out of plaintext, CSV,
+JSON or XML and then parsing the file's data into a data structure for the
+fuzzer to manipulate.
 
-After determining the file data type the fuzzer employs tailored strategies based on the binary's datatype. Such as maintaining `{} [] ,` characters for JSON when fuzzing for format strings but mutating them when testing the binary's parsing ability.
+After determining the file data type the fuzzer employs tailored strategies
+based on the binary's datatype. Such as maintaining `{} [] ,` characters for
+JSON when fuzzing for format strings but mutating them when testing the
+binary's parsing ability.
 
-The fuzzer will always run a few shorter functions at the beginning of the process for vulnerabilities that are easy to check for and can be ruled out.
+The fuzzer will always run a few shorter functions at the beginning of the
+process for vulnerabilities that are easy to check for and can be ruled out.
 
-After this the fuzzer will begin mutating the input in line with some internal strategies with random data or at random locations in the input. These strategies will continue to run varying on each execution until the program is quit.
+After this the fuzzer will begin mutating the input in line with some internal
+strategies with random data or at random locations in the input. These
+strategies will continue to run varying on each execution until the program is
+quit.
 
 # What kind of bugs the fuzzer can find
 
+The fuzzer is split into four different components, one for each file type and
+is optimised to look for particular bugs depending on the four file types.
+
 This fuzzer can find:
-- format string vulnerablities
-- buffer overflow vulnerabilities
-- bugs with missing or extra control characters
-- bugs parsing non-printable or ascii characters
-- bugs parsing large files
+- Format string vulnerabilities
+- Buffer overflow vulnerabilities
+- Bugs with missing or extra control characters
+- Bugs parsing non-printable or ascii characters
+- Bugs parsing large files
+- Integer overflows
+- Integer underflows
+- Nesting control structures (e.g. nesting tags in XML)
+- Rearranging fields and lines in a file
 
 # Possible Improvements
 
-This fuzzer can be improved by more minutely optimising the disk IO. There is the possibility of strategically calling functions so that the amount of time writing to disk is reduced. It could also be possible to more closely keep track of the changes made to the `testdata.bin` so that `lseek` could be employed to simply revert those specific bytes instead of the whole file. This would reduce disk IO.
-
-This can also be improved by chaining together multiple fuzzing strategies, such as fuzzing numbers while simultaneously fuzzing for buffer overflows. Rather than doing these separately. Multiple generations of fuzzing if you will. 
+- __Multi-threading__: This would provide a large performance boost. Currently
+  the fuzzer only uses a single cpu while most other cpu's are idle. Only a few
+  data structures would need to be shared which would result in little
+  synchronisation overhead.
+- __Chaining fuzzing strategies__: Most fuzzing strategies within the fuzzer
+  test for a single bug at a time. A possible improvement would be testing a
+  few possible bug classes together, for example:
+  - Buffer overflow in one field and integer overflow in another
+  - Buffer overflow in two separate fields
+- __Modifying control data__: This fuzzer excels at mutating data inside
+  certain parts of the payload, since the libraries used to parse and modify
+  the data structures provide a simple to use API. However, only a few
+  strategies focus on fuzzing control data (e.g. `<` and `>` for XML, `{` and
+  `}` for Json). One possible improvement is to mutate pairs of control
+  characters in the input, for example: `<` and `>` characters for a XML tag.
+- __Optimising disk IO__: There is the possibility of strategically calling
+  functions so that the amount of time writing to disk is reduced. It could
+  also  possible to more closely keep track of the changes made to the
+  `/tmp/testdata.bin-XXXXXX` so that `lseek` could be employed to simply revert
+  those specific bytes instead of the whole file. This would reduce disk IO.
 
 # Bonus Marks
 

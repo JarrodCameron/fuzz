@@ -29,6 +29,10 @@
 #define MIN(A,B) ((A<B)?(A):(B))
 #define MAX(A,B) ((A>B)?(A):(B))
 
+/* Given a "void *", convert it to an array of "void *", index into it, and
+ * type cast it */
+#define GETARG(TYPE,ARGS,INDEX) ((TYPE) (((void **) ARGS)[INDEX]))
+
 /* Since I'm too lazy to open gdb... */
 #define check() printf("Here -> %d (%s)\n", __LINE__, __FUNCTION__)
 
@@ -94,6 +98,9 @@ UNUSED static struct {
 	{92,       "\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA\nA"},
 	{96,       "\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A\0A"},
 	{70,       "\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n\0\n"},
+	{30,       "%s%s%s%s%s%s%s%s%s%s%s%s%s%s%s"},
+	{30,       "%n%n%n%n%n%n%n%n%n%n%n%n%n%n%n"},
+	{800,      BIG},
 	{0,        ""},
 };
 
@@ -106,9 +113,12 @@ UNUSED static const char *fmt_strings[] = {
 /* Return true if string matches regex: `[+-]?[0-9][0-9]*` */
 bool isint(const char *s, uint64_t len);
 
+/* The same as isint() but for a null terminated string */
+bool isint0(const char *s);
+
 /* Generate a random number between `lo` and `hi` inclusive.
  * For example: roll_dice(2, 4) -> {2, 3, 4} */
-uint32_t roll_dice(uint32_t lo, uint32_t hi);
+uint64_t roll_dice(uint64_t lo, uint64_t hi);
 
 /* Flip a bias coin. The bias is between zero and 100. This is done by
  * generating a random number. If the rand number is less than the bias

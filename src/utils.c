@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -46,10 +47,16 @@ isint(const char *s, uint64_t len)
 
 }
 
-uint32_t
-roll_dice(uint32_t lo, uint32_t hi)
+bool
+isint0(const char *s)
 {
-	
+	return isint(s, strlen(s));
+}
+
+uint64_t
+roll_dice(uint64_t lo, uint64_t hi)
+{
+
 	return (rand() % (hi - lo + 1)) + lo;
 }
 
@@ -72,10 +79,13 @@ void
 move_file(const char *oldpath, const char *newpath)
 {
 	char buf[4096];
+	ssize_t ret;
+
 	int oldfd = sopen(oldpath, O_RDONLY);
 	int newfd = sopen(newpath, O_WRONLY | O_CREAT, 0644);
 
-	ssize_t ret;
+	/* Empty the file in case there is anything inside of it */
+	sftruncate(newfd, 0);
 
 	while ((ret = sread(oldfd, buf, ARRSIZE(buf))) > 0)
 		/* we should loop here for partial writes but ain't nobody got time

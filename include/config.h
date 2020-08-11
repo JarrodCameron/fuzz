@@ -6,6 +6,10 @@
 
 #define TESTDATA_FILE "/tmp/testdata.bin-XXXXXX"
 
+/* The stdout and stderr of the target. Comment this if you don't want to
+ * suspress output of the target. */
+#define TARGET_OUTPUT "/dev/null"
+
 /* File descriptors for the fuzzer to read/write to/from the fork server */
 #define CMD_FD           198
 #define INFO_FD          199

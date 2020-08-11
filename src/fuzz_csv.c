@@ -18,7 +18,7 @@ struct value {
 	char *val;
 	char *orig_val;
 
-	/* Where this value has been artifically added 
+	/* Where this value has been artifically added
 	and should be removed when datasctructure is reverted */
 	uint64_t added_val;
 
@@ -37,7 +37,7 @@ struct row {
 	uint64_t nvals;
 	uint64_t orig_nvals;
 
-	/* Where this row has been artifically added 
+	/* Where this row has been artifically added
 	and should be removed when data sctructure is reverted */
 	uint64_t added_row;
 
@@ -138,7 +138,7 @@ void
 fuzz(struct state *s)
 {
 
-	int i = 0;
+	uint64_t i = 0;
 	while(i < ARRSIZE(fuzz_payloads_single)) {
 		fuzz_payloads_single[i](s);
 		i++;
@@ -190,7 +190,7 @@ revert_values_data_structure(struct row * row_to_revert) {
 				curr_val->previous = prev_val;
 				free(temp);
 			}
-		} 
+		}
 		else {
 
 			curr_val->len = curr_val->orig_len;
@@ -207,7 +207,7 @@ revert_values_data_structure(struct row * row_to_revert) {
 /* reverts the global var csv to its original form */
 static
 void
-revert_csv_data_structures(void) 
+revert_csv_data_structures(void)
 {
 	csv.nrows = csv.orig_nrows;
 
@@ -235,7 +235,7 @@ revert_csv_data_structures(void)
 			revert_values_data_structure(curr_row);
 			prev_row = curr_row;
 			curr_row = curr_row->next;
-			
+
 
 		}
 
@@ -246,7 +246,7 @@ revert_csv_data_structures(void)
 }
 
 static
-void 
+void
 insert_value_in_new_cell(uint32_t row, uint32_t col, struct value* value) {
 
 
@@ -322,7 +322,7 @@ insert_value_in_new_cell(uint32_t row, uint32_t col, struct value* value) {
 
 
 static
-void 
+void
 insert_value(uint32_t row, uint32_t col, char* value) {
 
 	struct value* new_value = smalloc(sizeof(struct value));
@@ -389,7 +389,7 @@ insert_value(uint32_t row, uint32_t col, char* value) {
 		curr_row->vals = new_value;
 	}
 	else {
-		i = 0;	
+		i = 0;
 		while (curr_val != NULL && i < col) {
 			i++;
 			curr_val = curr_val->next;
@@ -555,7 +555,7 @@ fuzz_bit_shift_flip_chars(struct state *s)
 	range = MIN(offset + range, len) - offset; /* Don't want to fuzz past the file */
 	bit_shift_in_range(s->payload_fd, offset, range);
 	bit_flip_in_range(s->payload_fd, offset, range);
-		
+
 }
 
 
@@ -596,8 +596,8 @@ fuzz_buffer_overflow(struct state *s)
 }
 
 
-/* Will try to fuzz characters if they are implemented into formulas or 
-some form of active code 
+/* Will try to fuzz characters if they are implemented into formulas or
+some form of active code
 https://payatu.com/csv-injection-basic-to-exploit
 */
 static
@@ -621,7 +621,7 @@ fuzz_special_chars(struct state *s) {
 static
 void
 try_special_chars(struct value* value_to_fuzz, struct state *s) {
-	
+
 	//CSV unique strings pulled with inspiration from https://payatu.com/csv-injection-basic-to-exploit
 	char formula_case[] = "=A1+A2";
 	char formula_case2[] = "=Z0+A200";
@@ -633,7 +633,7 @@ try_special_chars(struct value* value_to_fuzz, struct state *s) {
 	char command_inject_example[] = "cmd|' /C notepad'!'A1'";
 	char funny_csv_char[] = "+-@&;";
 	char *cases[] = {formula_case, formula_case2, formula_case3, formula_case4, formula_case5, hyperlink_case, hyperlink_case2, command_inject_example, funny_csv_char};
-	
+
 	char *old_val = value_to_fuzz->val;
 	uint64_t old_len = value_to_fuzz->len;
 
@@ -735,12 +735,12 @@ fuzz_empty_cells(struct state *s){
 
 	struct row * curr_row = csv.rows;
 
-	while(curr_row != NULL) { 
+	while(curr_row != NULL) {
 
 		struct value * curr_value = curr_row->vals;
 		while(curr_value != NULL) {
 				if(coin_flip(10)) { //Low as it gets run repeatedly
-					
+
 					uint32_t row = 0;
 					uint32_t col = 0;
 

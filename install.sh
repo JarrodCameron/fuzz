@@ -1,16 +1,7 @@
 #!/bin/sh
 
-# Author: Jarrod Cameron (z5210220)
-# Date:   30/07/20 20:38
+# This was tested on Ubuntu 20.04 LTS virtual machine
 
-# Exit on non-zero return status
-set -e
+sudo apt install -y gcc gcc-multilib libc6-dev:i386 libxml2 libxml2-dev make
 
-# TODO Check this on an ubuntu box
-sudo apt-get install -y libxml2
-sudo apt-get install -y libxml2-dev
-
-make shared
-
-
-
+make clean all

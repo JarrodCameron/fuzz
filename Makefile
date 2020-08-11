@@ -1,6 +1,3 @@
-# Author: Jarrod Cameron (z5210220)
-# Date:   10/07/20 21:12
-
 CC=gcc
 CFLAGS=-Wall -ggdb -Wextra -I$(INCDIR) `xml2-config --cflags`
 
@@ -22,6 +19,7 @@ fuzzer: $(addprefix $(BUILDDIR)/, $(OBJS))
 	$(CC) -o fuzzer $^ -Llibs $(LIBS)
 	@echo ':)'
 
+# TODO Remove dummy
 $(DUMMY): dummy/dummy.c
 	make -C dummy
 
