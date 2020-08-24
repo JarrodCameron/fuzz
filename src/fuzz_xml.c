@@ -269,6 +269,7 @@ fuzz_single_populate_error:
 	for (uint64_t i = 0; i < ARRSIZE(xml.dummy_nodes); i++) {
 		if (xml.dummy_nodes[i])
 			xmlFreeNode(xml.dummy_nodes[i]);
+		xml.dummy_nodes[i] = NULL;
 	}
 }
 
