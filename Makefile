@@ -1,5 +1,10 @@
-CC=gcc
-CFLAGS=-Wall -ggdb -Wextra -I$(INCDIR) `xml2-config --cflags`
+CC?=gcc
+CFLAGS?=-Wall -ggdb -Wextra -I$(INCDIR) `xml2-config --cflags`
+
+# TODO Make a logger
+# TODO remove run.sh file
+# TODO tidy up directory (we only need the final writeup)
+# TODO remove -ggdb
 
 INCDIR=include
 SRCDIR=src

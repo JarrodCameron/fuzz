@@ -9,7 +9,7 @@
 #include "fuzzer.h"
 #include "json-builder.h"
 #include "json.h"
-#include "mutation_functions.h"
+#include "mutations.h"
 #include "safe.h"
 #include "utils.h"
 
@@ -283,10 +283,9 @@ static
 void
 fuzz_bit_shift(struct state *s)
 {
-	printf("bit shift\n");
 	size_t offset, len = json_dump(s);
 
-	for (size_t i = 0; i < len; i++) {
+	for (uint64_t i = 0; i < len; i++) {
 		char ch = json.mem[i];
 
 		switch (ch) {
@@ -355,7 +354,7 @@ fuzz_extra_entries(struct state *s)
 	deploy();
 
 	// Only restore the original entries
-	json_value *new_jv = json_object_new(json.jv->u.object.length);
+	json_value *new_jv = json_object_new(length);
 	for (uint32_t i = 0; i < length; i++) {
 		json_object_entry *entry = &(json.jv->u.object.values[i]);
 		json_object_push(new_jv, entry->name, entry->value);
@@ -379,7 +378,7 @@ fuzz_extra_objects(struct state *s)
 		strcat(final, buf2);
 		strcat(final, ", ");
 	}
-	
+
 	strcat(final, buf2);
 	strcat(final, "]");
 
@@ -391,19 +390,19 @@ fuzz_extra_objects(struct state *s)
 }
 
 /*Writing json.jv 100 times*/
-static 
-void 
+static
+void
 fuzz_append_objects(struct state *s)
 {
 	char * buf2 = malloc(json_measure(json.jv));
     json_serialize(buf2, json.jv);
 	char * final = smalloc(105*strlen(buf2));
-	
+
 	for (uint32_t i = 0; i < 100; i++) {
 		strcat(final, buf2);
 		strcat(final, "\n");
 	}
-	
+
 	strcat(final, buf2);
 	slseek(s->payload_fd, 0, SEEK_SET);
 	swrite(s->payload_fd, final, strlen(final));

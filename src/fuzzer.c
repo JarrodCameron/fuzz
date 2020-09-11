@@ -12,7 +12,7 @@
 #include "safe.h"
 #include "utils.h"
 #include "config.h"
-#include "mutation_functions.h"
+#include "mutations.h"
 #include "ftype.h"
 #include "fuzzer.h"
 #include "fuzz_csv.h"

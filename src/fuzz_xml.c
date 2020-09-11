@@ -10,15 +10,12 @@
 
 #include "fs.h"
 #include "fuzz_xml.h"
-#include "mutation_functions.h"
+#include "mutations.h"
 #include "safe.h"
 #include "utils.h"
 
 /* Cast string to a "const xmlChar *" */
 #define TOXMLCHAR(S) ((const unsigned char *) S)
-
-/* So we have something to look at while the program is running */
-#define CHECK() printf("[Nodes: %4lu] %s\n", xml.num_nodes, (__FUNCTION__))
 
 /* Examples can be found on:
  *     http://www.xmlsoft.org/examples/index.html
@@ -216,8 +213,6 @@ static
 void
 fuzz_single_fmt_props(struct state *s)
 {
-	CHECK();
-
 	iterate_xmldoc(
 		sXmlDocGetRootElement(xml.doc),
 		s,
@@ -229,8 +224,6 @@ static
 void
 fuzz_single_populate(struct state *s)
 {
-	CHECK();
-
 	xmlNode *tmp, *root;
 
 	for (uint64_t i = 0; i < ARRSIZE(xml.dummy_nodes); i++) {
@@ -302,8 +295,6 @@ static
 void
 fuzz_single_shuffle(struct state *s)
 {
-	CHECK();
-
 	xmlNode *copy, *root;
 
 	root = sXmlDocGetRootElement(xml.doc);
@@ -344,8 +335,6 @@ static
 void
 fuzz_clone_root(struct state *s)
 {
-	CHECK();
-
 	xmlNode *root = sXmlDocGetRootElement(xml.doc);
 
 	xmlNode *copy = xmlCopyNode(root, 1 /* recursive */);
@@ -416,8 +405,6 @@ static
 void
 fuzz_buffer_overflow(struct state *s)
 {
-	CHECK();
-
 	iterate_xmldoc (
 		sXmlDocGetRootElement(xml.doc),
 		s,
@@ -457,8 +444,6 @@ static
 void
 fuzz_tag_attrs(struct state *s)
 {
-	CHECK();
-
 	iterate_xmldoc(
 		sXmlDocGetRootElement(xml.doc),
 		s,
@@ -466,8 +451,6 @@ fuzz_tag_attrs(struct state *s)
 	);
 }
 
-/* TODO We could segfault if we iterate too many times. To fix this we need a
- * stack to store all possible iterations */
 static
 void
 iterate_xmldoc(xmlNodePtr root, void *data, iter_handle ih)
@@ -537,8 +520,6 @@ static
 void
 fuzz_tag_fmt_str(struct state *s)
 {
-	CHECK();
-
 	iterate_xmldoc(
 		sXmlDocGetRootElement(xml.doc),
 		s,
@@ -550,8 +531,6 @@ static
 void
 fuzz_props_fmt_str(struct state *s)
 {
-	CHECK();
-
 	iterate_xmldoc(
 		sXmlDocGetRootElement(xml.doc),
 		s,
@@ -563,8 +542,6 @@ static
 void
 fuzz_big_print(struct state *s)
 {
-	CHECK();
-
 	off_t bytes = 0;
 	uint64_t niters;
 	int ret;
@@ -634,8 +611,6 @@ static
 void
 fuzz_populate(struct state *s)
 {
-	CHECK();
-
 	void *args[2];
 	xmlNode *curr = NULL;
 	uint64_t index;
@@ -691,8 +666,6 @@ static
 void
 fuzz_refresh(struct state *s)
 {
-	CHECK();
-
 	xmlFreeDoc(xml.doc);
 
 	xml.doc = xmlReadMemory(
@@ -854,8 +827,6 @@ static
 void
 fuzz_props_bad_ints(struct state *s)
 {
-	CHECK();
-
 	iterate_xmldoc(
 		sXmlDocGetRootElement(xml.doc),
 		s,
@@ -948,8 +919,6 @@ static
 void
 fuzz_cont_fmt(struct state *s)
 {
-	CHECK();
-
 	iterate_xmldoc(
 		sXmlDocGetRootElement(xml.doc),
 		s,
@@ -961,8 +930,6 @@ static
 void
 fuzz_cont_bof(struct state *s)
 {
-	CHECK();
-
 	iterate_xmldoc(
 		sXmlDocGetRootElement(xml.doc),
 		s,
@@ -974,8 +941,6 @@ static
 void
 fuzz_cont_bad_ints(struct state *s)
 {
-	CHECK();
-
 	iterate_xmldoc(
 		sXmlDocGetRootElement(xml.doc),
 		s,
@@ -987,8 +952,6 @@ static
 void
 fuzz_rnd_shift(struct state *s)
 {
-	CHECK();
-
 	uint32_t bytes, start_range;
 
 	bytes = save_doc(s);
@@ -1005,8 +968,6 @@ static
 void
 fuzz_rnd_flip(struct state *s)
 {
-	CHECK();
-
 	uint32_t bytes, start_range;
 	const uint32_t maxlen = 8;
 

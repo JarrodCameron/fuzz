@@ -42,7 +42,7 @@ stats () {
 }
 
 rm -f testdata.bin bad.txt
-make
+make clean all
 
 if [ "$#" -lt '1' ]; then
 	echo 'Usage: ./run.sh <prog> [v|V|s]'
@@ -78,7 +78,7 @@ if [ -n "$1" ]; then
 	esac
 fi
 
-clear
+#clear
 
 $cmd ./fuzzer "$txt" "$bin"
 

@@ -4,6 +4,7 @@
 /* Here lies random config data, changing these value(s) SHOULD not stuff up
  * the program */
 
+/* The location to store the payload before sending it to the target */
 #define TESTDATA_FILE "/tmp/testdata.bin-XXXXXX"
 
 /* The stdout and stderr of the target. Comment this if you don't want to
@@ -19,14 +20,9 @@
 #define CMD_QUIT "Q"
 #define CMD_TEST "T"
 
-#define TRUE 1
-#define FALSE 0
-
-#define NUM_OF_BIT_FLIP_ITERATIONS_CONSTANT 4
-#define NUM_OF_BIT_SHIFT_ITERATIONS_CONSTANT 4
-#define NUM_EMPTY_CELLS_CONSTANT 20
-#define BAD_FILE "bad.txt"
-
+#define NBITFLIPS   4
+#define NBITSHIFTS  4
+#define NEMPTYCELLS 20
+#define BAD_FILE    "bad.txt"
 
 #endif /* _CONFIG_H_ */
-

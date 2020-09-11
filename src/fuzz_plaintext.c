@@ -7,7 +7,7 @@
 #include "fs.h"
 #include "fuzz_plaintext.h"
 #include "fuzzer.h"
-#include "mutation_functions.h"
+#include "mutations.h"
 #include "safe.h"
 #include "utils.h"
 
@@ -25,7 +25,7 @@ static bool is_int(const char c);
 static off_t pt_dump(struct state *s);
 static void fuzz_bad_strings(struct state *s);
 static void fuzz_bad_ints(struct state *s);
-static void fuzz_flip_shifts(struct state *s, int n, char *l);
+static void fuzz_flip_shifts(struct state *s, uint64_t n, char *l);
 static void fuzz(struct state *s);
 static void fuzz_shift_all_lines(struct state *s);
 
@@ -53,7 +53,7 @@ fuzz_handle_plaintext(struct state *state)
 	// loop through the string to extract all other tokens
 	int i = 0;
 	while(token != NULL) {
-		uint64_t line_len = sizeof(char) * strlen(token);
+		uint64_t line_len = strlen(token);
 		pt.lines[i] = smalloc(line_len+2);
 
 		strcpy(pt.lines[i], token);
@@ -91,7 +91,7 @@ static
 void
 fuzz_shift_all_lines(struct state *s)
 {
-	int prev_bytes = 0;
+	uint64_t prev_bytes = 0;
 	for(uint64_t j=0; j < pt.nlines; j++){
 
 		for (uint64_t i = roll_dice(pt.nlines, pt.nlines + 1337); i; i--)
@@ -103,7 +103,7 @@ fuzz_shift_all_lines(struct state *s)
 
 static
 void
-fuzz_flip_shifts(struct state *s, int n, char *l)
+fuzz_flip_shifts(struct state *s, uint64_t n, char *l)
 {
 	bit_shift_in_range(s->payload_fd, n, strlen(l));
 	bit_flip_in_range(s->payload_fd, n, strlen(l));
@@ -131,11 +131,10 @@ void
 fuzz_bad_strings(struct state *s)
 {
 	pt_dump(s);
-	/* why is this an int??? */
-	int prev_bytes = 0;
+	uint64_t prev_bytes = 0;
 	for (uint64_t i = 0; i < pt.nlines; i++) {
 		replace_strings(s->payload_fd, prev_bytes, strlen(pt.lines[i]));
-		prev_bytes = prev_bytes + strlen(pt.lines[i]);
+		prev_bytes += strlen(pt.lines[i]);
 	}
 }
 
@@ -144,12 +143,12 @@ void
 fuzz_bad_ints(struct state *s)
 {
 	pt_dump(s);
-	int prev_bytes = 0;
+	uint64_t prev_bytes = 0;
 	for(uint64_t i=0; i < pt.nlines; i++){
 		if (is_int(pt.lines[i][0])) {
 			replace_numbers(s->payload_fd, prev_bytes);
 		}
-		prev_bytes = prev_bytes + strlen(pt.lines[i]);
+		prev_bytes += strlen(pt.lines[i]);
 	}
 }
 
