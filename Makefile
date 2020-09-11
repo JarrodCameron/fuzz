@@ -31,3 +31,4 @@ $(BUILDDIR)/%.o: $(SRCDIR)/%.c
 clean:
 	make -C libs clean
 	make -C shared clean
+	rm -rf $(BUILDDIR) $(BINS) $(SHARED)
