@@ -73,4 +73,7 @@ char *sstrdup(const char *s);
 /* mkstemp() wrapper */
 int smkstemp(char *template);
 
+/* time() wrapper */
+time_t stime(time_t *tloc);
+
 #endif /* _SAFE_H_ */

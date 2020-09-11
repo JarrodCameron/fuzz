@@ -5,6 +5,7 @@
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <time.h>
 #include <unistd.h>
 
 #include "utils.h"
@@ -198,5 +199,14 @@ smkstemp(char *template)
 	int ret = mkstemp(template);
 	if (ret < 0)
 		panic("Error: mkstemp(\"%s\")\n", template);
+	return ret;
+}
+
+time_t
+stime(time_t *tloc)
+{
+	time_t ret = time(tloc);
+	if (ret == (time_t) -1)
+		panic("Error: mkstemp(%u)\n", tloc);
 	return ret;
 }

@@ -59,6 +59,8 @@ deploy(void)
 {
 	int wstatus;
 
+	display_deploy();
+
 	if (deploy_hook)
 		return deploy_hook();
 
@@ -70,7 +72,6 @@ deploy(void)
 
 	if (WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV) {
 
-		printf("$$$ SIGSEGV $$$\n");
 		move_file(system_state->payload_fname, BAD_FILE);
 
 		exit_fuzzer();
@@ -133,7 +134,6 @@ boring_deploy(void)
 
 		if (WIFSIGNALED(wstatus) && WTERMSIG(wstatus) == SIGSEGV) {
 
-			printf("$$$ SIGSEGV $$$\n");
 			move_file(system_state->payload_fname, BAD_FILE);
 
 			exit_fuzzer();
