@@ -7,6 +7,7 @@
 #include <sys/types.h>
 
 #include "config.h"
+#include "display.h"
 #include "fs.h"
 #include "safe.h"
 #include "utils.h"

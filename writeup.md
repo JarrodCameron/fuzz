@@ -1,12 +1,3 @@
-# COMP6447 - Final Fuzzer Submission
-
----
-    Jarrod Cameron (z5210220)
-    Shantanu Kulkarni (z5205339)
-    Michelle Qiu (z5163295)
-    Brandan Nyholm (z5206679)
----
-
 # How The Fuzzer Works
 
 This fuzzer works by initially detecting the file type out of plaintext, CSV,
